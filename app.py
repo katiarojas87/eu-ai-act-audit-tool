@@ -18,6 +18,8 @@ import config
 from graph import audit_system
 from report import generate_report
 
+
+
 st.set_page_config(page_title="EU AI Act Audit — KRS Solutions", page_icon="⚖️", layout="wide")
 
 if "systems" not in st.session_state:
@@ -40,15 +42,30 @@ with st.form("add_system", clear_on_submit=True):
         placeholder="What does it do? Who is affected? What decisions does it influence?",
         height=120,
     )
+    components = st.text_area(
+        "Components / architecture (optional, one per line)",
+        placeholder="- Web portal (recruiter uploads CVs)\n- AI Agent (GPT-4o)\n"
+                    "- Ranking model (fine-tuned on past hires)\n- Email integration (auto rejection)",
+        height=120,
+    )
     submitted = st.form_submit_button("Classify")
 
-if submitted and name and desc:
-    with st.spinner("Reasoning over the EU AI Act..."):
-        result = audit_system(name, desc)
-    if result.get("needs_review") and result.get("follow_up_questions"):
-        st.session_state.pending = result
-    else:
-        st.session_state.systems.append(result)
+if submitted and not (name and desc):
+    st.warning("Please fill in both the system name and a description before classifying.")
+elif submitted:
+    try:
+        with st.spinner("Reasoning over the EU AI Act..."):
+            result = audit_system(name, desc, components=components)
+        if result.get("needs_review") and result.get("follow_up_questions"):
+            st.session_state.pending = result
+        else:
+            st.session_state.systems.append(result)
+            st.success(f"Classified **{name}** as {result.get('tier')}"
+                       f"{' + GPAI' if result.get('is_gpai') else ''}.")
+    except Exception as e:  # noqa: BLE001
+        st.error(f"Classification failed: {e}")
+        st.info("If this mentions 'credit balance', top up API credits at "
+                "console.anthropic.com → Plans & Billing.")
 
 # --- Clarification loop -------------------------------------------------------
 if st.session_state.pending:
@@ -64,7 +81,8 @@ if st.session_state.pending:
         accept = col2.form_submit_button("Accept as 'Needs legal review'")
     if refine:
         with st.spinner("Re-classifying..."):
-            result = audit_system(p["system_name"], p["description"], clarifications=answers)
+            result = audit_system(p["system_name"], p["description"],
+                                  components=p.get("components", ""), clarifications=answers)
         st.session_state.systems.append(result)
         st.session_state.pending = None
         st.rerun()
@@ -80,6 +98,11 @@ st.subheader(f"Audited systems ({len(st.session_state.systems)})")
 TIER_BADGE = {
     "PROHIBITED": "🔴", "ANNEX_I": "🟠", "ANNEX_III": "🟠",
     "LIMITED": "🔵", "MINIMAL": "🟢", "GPAI": "🟣",
+}
+STATUS_BADGE = {
+    "likely_gap": "⚠️ likely gap",
+    "likely_in_place": "✅ likely in place",
+    "needs_confirmation": "❓ confirm",
 }
 
 for i, s in enumerate(st.session_state.systems):
@@ -97,8 +120,9 @@ for i, s in enumerate(st.session_state.systems):
         if s.get("obligations"):
             st.markdown("**Obligations & gaps:**")
             st.table([
-                {"Obligation": o.get("obligation"), "Deadline": o.get("deadline"),
-                 "Gap check": o.get("gap_question")}
+                {"Status": STATUS_BADGE.get(o.get("status"), "❓ confirm"),
+                 "Obligation": o.get("obligation"), "Deadline": o.get("deadline"),
+                 "Assessment / gap check": o.get("reasoning") or o.get("gap_question")}
                 for o in s["obligations"]
             ])
         if st.button("Remove", key=f"rm_{i}"):
@@ -110,9 +134,9 @@ st.divider()
 if st.session_state.systems and client_name:
     if st.button("📄 Generate PDF report", type="primary"):
         path = generate_report(client_name, st.session_state.systems)
-        with open(path, "rb") as f:
-            st.download_button("Download report", f, file_name=path.name,
-                               mime="application/pdf")
         st.success(f"Report saved to {path}")
+        with open(path, "rb") as f:
+            st.download_button("⬇️ Download report", f, file_name=path.name,
+                               mime="application/pdf")
 elif not client_name:
     st.info("Enter a client name to enable PDF export.")

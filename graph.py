@@ -30,6 +30,7 @@ class AuditState(TypedDict, total=False):
     # input
     system_name: str
     description: str          # plain-language description (any of NL/FR/EN/ES)
+    components: str           # optional architecture / component list (free text)
     clarifications: dict      # answers to follow-up questions {question: answer}
     # working
     passages: list[dict]      # retrieved law context
@@ -67,7 +68,7 @@ def _llm_json(system: str, user: str) -> dict:
 # Nodes
 # --------------------------------------------------------------------------- #
 def node_retrieve(state: AuditState) -> AuditState:
-    query = f"{state['system_name']}. {state['description']}"
+    query = f"{state['system_name']}. {state['description']} {state.get('components', '')}"
     return {"passages": retrieve(query)}
 
 
@@ -96,6 +97,7 @@ def node_classify(state: AuditState) -> AuditState:
         f"LEGAL CONTEXT:\n{context}\n\n"
         f"AI SYSTEM\nName: {state['system_name']}\n"
         f"Description: {state['description']}\n"
+        f"Components: {state.get('components') or '(none provided)'}\n"
         f"Clarifications:\n{clar_text}"
     )
     data = _llm_json(system, user)
@@ -124,7 +126,8 @@ def node_gpai(state: AuditState) -> AuditState:
         'Reply with JSON only: {"is_gpai": true|false, "gpai_rationale": "..."}'
     )
     user = (f"System: {state['system_name']}\n"
-            f"Description: {state['description']}")
+            f"Description: {state['description']}\n"
+            f"Components: {state.get('components') or '(none provided)'}")
     data = _llm_json(system, user)
     return {"is_gpai": bool(data.get("is_gpai")),
             "gpai_rationale": data.get("gpai_rationale", "")}
@@ -138,22 +141,42 @@ def node_obligations(state: AuditState) -> AuditState:
                      "the GPAI obligations from the reference (technical documentation, "
                      "info to downstream providers, copyright policy, training-data "
                      "summary; plus systemic-risk duties only if applicable).")
+
+    components = (state.get("components") or "").strip()
+    if components:
+        status_note = (
+            "\nThe client provided a COMPONENT / ARCHITECTURE list. For each "
+            "obligation, REASON from those components and assign a 'status':\n"
+            "  'likely_gap' — the architecture suggests the obligation is NOT met "
+            "(e.g. auto-sent rejection emails imply no human oversight; a model "
+            "fine-tuned on past decisions implies likely training-data bias).\n"
+            "  'likely_in_place' — a component is evidence the obligation is "
+            "partly met (e.g. a database storing scores/decisions => logging).\n"
+            "  'needs_confirmation' — cannot tell from the architecture; must ask.\n"
+            "Add a one-line 'reasoning' citing the component(s) you used.")
+        status_fields = '"status": "likely_gap|likely_in_place|needs_confirmation", "reasoning": "...", '
+    else:
+        status_note = ("\nNo component list was provided, so set every status to "
+                       "'needs_confirmation' with empty reasoning.")
+        status_fields = '"status": "needs_confirmation", "reasoning": "", '
+
     system = (
         "You map an already-classified AI system to its concrete EU AI Act "
         "obligations using the reference below. Return the obligations that apply "
         "to THIS tier. For each, add a short 'gap_question' the consultant can ask "
-        "the client to check compliance." + gpai_note + "\n\n"
+        "the client to confirm compliance." + gpai_note + status_note + "\n\n"
         f"OBLIGATIONS REFERENCE:\n{obligations_ref}\n\n"
         'Reply with JSON only:\n'
         '{"obligations": [{"obligation": "...", "deadline": "...", '
-        '"gap_question": "..."}]}'
+        + status_fields + '"gap_question": "..."}]}'
     )
     user = (
         f"System: {state['system_name']}\n"
         f"Tier: {state['tier']}\n"
         f"Is GPAI: {state.get('is_gpai', False)}\n"
         f"Annex category: {state.get('annex_category', '-')}\n"
-        f"Rationale: {state.get('rationale', '')}"
+        f"Rationale: {state.get('rationale', '')}\n"
+        f"Components:\n{components or '(none provided)'}"
     )
     return _llm_json(system, user)
 
@@ -195,12 +218,13 @@ def build_graph():
 GRAPH = build_graph()
 
 
-def audit_system(system_name: str, description: str,
+def audit_system(system_name: str, description: str, components: str = "",
                  clarifications: Optional[dict] = None) -> AuditState:
     """Run one AI system through the full pipeline."""
     return GRAPH.invoke({
         "system_name": system_name,
         "description": description,
+        "components": components,
         "clarifications": clarifications or {},
     })
 

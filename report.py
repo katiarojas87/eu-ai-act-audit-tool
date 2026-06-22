@@ -20,6 +20,16 @@ TIER_COLOR = {
     "MINIMAL": colors.HexColor("#2E7D32"),
     "GPAI": colors.HexColor("#6A1B9A"),
 }
+STATUS_LABEL = {
+    "likely_gap": "Likely gap",
+    "likely_in_place": "Likely in place",
+    "needs_confirmation": "Confirm",
+}
+STATUS_COLOR = {
+    "likely_gap": colors.HexColor("#B00020"),
+    "likely_in_place": colors.HexColor("#2E7D32"),
+    "needs_confirmation": colors.HexColor("#7A7A00"),
+}
 
 
 def generate_report(client_name: str, systems: list[dict],
@@ -100,12 +110,13 @@ def generate_report(client_name: str, systems: list[dict],
         obl = s.get("obligations") or []
         if obl:
             story.append(Paragraph("<b>Obligations &amp; compliance gaps</b>", body))
-            orows = [["Obligation", "Deadline", "Gap check"]]
+            orows = [["Obligation", "Deadline", "Status", "Assessment / gap check"]]
             for o in obl:
+                assessment = o.get("reasoning") or o.get("gap_question", "")
                 orows.append([o.get("obligation", ""), o.get("deadline", ""),
-                              o.get("gap_question", "")])
-            ot = Table(orows, colWidths=[5.5*cm, 3*cm, 8.5*cm])
-            ot.setStyle(TableStyle([
+                              STATUS_LABEL.get(o.get("status"), "Confirm"), assessment])
+            ot = Table(orows, colWidths=[4.5*cm, 2.5*cm, 2.3*cm, 7.7*cm])
+            style = [
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#33415C")),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                 ("FONTSIZE", (0, 0), (-1, -1), 8),
@@ -113,7 +124,12 @@ def generate_report(client_name: str, systems: list[dict],
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("TOPPADDING", (0, 0), (-1, -1), 4),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ]))
+            ]
+            # colour the Status cell by assessment
+            for ri, o in enumerate(obl, start=1):
+                style.append(("TEXTCOLOR", (2, ri), (2, ri),
+                              STATUS_COLOR.get(o.get("status"), colors.grey)))
+            ot.setStyle(TableStyle(style))
             story.append(ot)
 
     story.append(Spacer(1, 0.8*cm))
