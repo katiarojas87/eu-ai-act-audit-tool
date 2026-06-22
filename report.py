@@ -53,11 +53,11 @@ def generate_report(client_name: str, systems: list[dict],
     story.append(Spacer(1, 0.4*cm))
 
     # Summary table
-    rows = [["AI System", "Risk Tier", "Confidence"]]
+    rows = [["AI System", "Risk Tier", "GPAI", "Confidence"]]
     for s in systems:
         rows.append([s.get("system_name", "-"), s.get("tier", "-"),
-                     s.get("confidence", "-")])
-    t = Table(rows, colWidths=[8*cm, 5*cm, 4*cm])
+                     "Yes" if s.get("is_gpai") else "—", s.get("confidence", "-")])
+    t = Table(rows, colWidths=[7*cm, 4.5*cm, 2.5*cm, 3*cm])
     t.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1E6FB8")),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -80,10 +80,18 @@ def generate_report(client_name: str, systems: list[dict],
         story.append(Paragraph(f"<b>Risk tier: {tier}</b> "
                                f"{('— ' + s['annex_category']) if s.get('annex_category') else ''}",
                                tier_style))
+        if s.get("is_gpai"):
+            gpai_style = ParagraphStyle("gpai", parent=body, fontSize=11,
+                                        textColor=TIER_COLOR["GPAI"])
+            story.append(Paragraph("<b>+ Also a GPAI provider</b> "
+                                   "(general-purpose / foundation model obligations apply)",
+                                   gpai_style))
         if s.get("confidence") == "low":
             story.append(Paragraph("<i>⚠ Needs legal review — classification uncertain.</i>", sub))
         story.append(Spacer(1, 0.2*cm))
         story.append(Paragraph(f"<b>Rationale.</b> {s.get('rationale', '')}", body))
+        if s.get("is_gpai") and s.get("gpai_rationale"):
+            story.append(Paragraph(f"<b>GPAI rationale.</b> {s['gpai_rationale']}", body))
         if s.get("triggering_articles"):
             story.append(Paragraph(
                 "<b>Triggering provisions:</b> " + ", ".join(s["triggering_articles"]), body))

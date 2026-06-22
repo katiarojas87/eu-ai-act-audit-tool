@@ -34,13 +34,16 @@ class AuditState(TypedDict, total=False):
     # working
     passages: list[dict]      # retrieved law context
     # output
-    tier: str                 # PROHIBITED | ANNEX_I | ANNEX_III | LIMITED | MINIMAL | GPAI
+    tier: str                 # PROHIBITED | ANNEX_I | ANNEX_III | LIMITED | MINIMAL
     annex_category: str       # e.g. "4. Employment" when ANNEX_III
     rationale: str
     triggering_articles: list[str]
     confidence: str           # high | medium | low
     needs_review: bool
     follow_up_questions: list[str]
+    # GPAI is an ORTHOGONAL flag: a system can be e.g. ANNEX_III *and* GPAI.
+    is_gpai: bool
+    gpai_rationale: str
     obligations: list[dict]   # [{obligation, applies, deadline, gap_question}]
 
 
@@ -78,8 +81,10 @@ def node_classify(state: AuditState) -> AuditState:
         "Classify the described AI system into exactly one risk tier using ONLY the "
         "provided legal context. The system description may be in Dutch, French, "
         "English or Spanish. Be precise and cite article/annex references.\n\n"
-        "Tiers: PROHIBITED, ANNEX_I (high-risk in regulated products), "
-        "ANNEX_III (high-risk use case), LIMITED (transparency only), MINIMAL, GPAI.\n"
+        "Tiers (pick ONE, based on the USE CASE): PROHIBITED, "
+        "ANNEX_I (high-risk in regulated products), ANNEX_III (high-risk use case), "
+        "LIMITED (transparency only), MINIMAL.\n"
+        "Do NOT use GPAI here — GPAI is assessed separately as a flag, not a tier.\n"
         'Reply with JSON only:\n'
         '{"tier": "...", "annex_category": "...", "rationale": "...", '
         '"triggering_articles": ["..."], "confidence": "high|medium|low", '
@@ -98,13 +103,46 @@ def node_classify(state: AuditState) -> AuditState:
     return data
 
 
+def node_gpai(state: AuditState) -> AuditState:
+    """Orthogonal check: is the organisation a GPAI (foundation-model) provider?
+
+    GPAI obligations are triggered by building, fine-tuning, or integrating a
+    general-purpose / foundation model — independent of the use-case risk tier.
+    Training a small classical model (regression, decision tree) is NOT GPAI.
+    """
+    system = (
+        "You decide whether an organisation has GPAI (general-purpose AI model) "
+        "obligations under the EU AI Act. This is INDEPENDENT of the risk tier.\n\n"
+        "Answer is_gpai=true ONLY if the organisation builds, fine-tunes, or "
+        "integrates/distributes a general-purpose FOUNDATION model (e.g. an LLM "
+        "like GPT, Claude, Llama, Mistral; a large vision or multimodal model).\n"
+        "Answer is_gpai=false if it only: calls such a model via API for inference "
+        "(no weight changes), uses pre-trained embeddings as-is, or trains a small "
+        "classical/task-specific model (regression, decision tree, a custom CNN). "
+        "Those do not create GPAI provider obligations.\n"
+        "The description may be in Dutch, French, English or Spanish.\n"
+        'Reply with JSON only: {"is_gpai": true|false, "gpai_rationale": "..."}'
+    )
+    user = (f"System: {state['system_name']}\n"
+            f"Description: {state['description']}")
+    data = _llm_json(system, user)
+    return {"is_gpai": bool(data.get("is_gpai")),
+            "gpai_rationale": data.get("gpai_rationale", "")}
+
+
 def node_obligations(state: AuditState) -> AuditState:
     obligations_ref = (config.KNOWLEDGE_DIR / "obligations.md").read_text(encoding="utf-8")
+    gpai_note = ""
+    if state.get("is_gpai"):
+        gpai_note = ("\nThis system is ALSO a GPAI provider — additionally include "
+                     "the GPAI obligations from the reference (technical documentation, "
+                     "info to downstream providers, copyright policy, training-data "
+                     "summary; plus systemic-risk duties only if applicable).")
     system = (
         "You map an already-classified AI system to its concrete EU AI Act "
-        "obligations using the reference below. Return only obligations that apply "
+        "obligations using the reference below. Return the obligations that apply "
         "to THIS tier. For each, add a short 'gap_question' the consultant can ask "
-        "the client to check compliance.\n\n"
+        "the client to check compliance." + gpai_note + "\n\n"
         f"OBLIGATIONS REFERENCE:\n{obligations_ref}\n\n"
         'Reply with JSON only:\n'
         '{"obligations": [{"obligation": "...", "deadline": "...", '
@@ -113,6 +151,7 @@ def node_obligations(state: AuditState) -> AuditState:
     user = (
         f"System: {state['system_name']}\n"
         f"Tier: {state['tier']}\n"
+        f"Is GPAI: {state.get('is_gpai', False)}\n"
         f"Annex category: {state.get('annex_category', '-')}\n"
         f"Rationale: {state.get('rationale', '')}"
     )
@@ -139,12 +178,14 @@ def build_graph():
     g = StateGraph(AuditState)
     g.add_node("retrieve", node_retrieve)
     g.add_node("classify", node_classify)
+    g.add_node("gpai", node_gpai)
     g.add_node("clarify", node_clarify)
     g.add_node("obligations", node_obligations)
 
     g.set_entry_point("retrieve")
     g.add_edge("retrieve", "classify")
-    g.add_conditional_edges("classify", _route,
+    g.add_edge("classify", "gpai")
+    g.add_conditional_edges("gpai", _route,
                             {"clarify": "clarify", "obligations": "obligations"})
     g.add_edge("clarify", END)
     g.add_edge("obligations", END)

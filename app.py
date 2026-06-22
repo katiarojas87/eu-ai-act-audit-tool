@@ -84,11 +84,14 @@ TIER_BADGE = {
 
 for i, s in enumerate(st.session_state.systems):
     badge = TIER_BADGE.get(s.get("tier", ""), "⚪")
-    with st.expander(f"{badge} {s.get('system_name')} — {s.get('tier')} "
+    gpai = " + 🟣 GPAI" if s.get("is_gpai") else ""
+    with st.expander(f"{badge} {s.get('system_name')} — {s.get('tier')}{gpai} "
                      f"({s.get('confidence', '?')} confidence)"):
         if s.get("annex_category"):
             st.markdown(f"**Category:** {s['annex_category']}")
         st.markdown(f"**Rationale:** {s.get('rationale', '')}")
+        if s.get("is_gpai"):
+            st.markdown(f"**🟣 Also a GPAI provider:** {s.get('gpai_rationale', '')}")
         if s.get("triggering_articles"):
             st.markdown("**Triggering provisions:** " + ", ".join(s["triggering_articles"]))
         if s.get("obligations"):
