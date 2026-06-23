@@ -30,6 +30,22 @@ if "pending" not in st.session_state:
 st.title("⚖️ EU AI Act — Compliance Audit")
 st.caption(f"{config.COMPANY_NAME} · internal diagnostic tool · model: {config.LLM_MODEL}")
 
+with st.expander("🎨 Colour legend", expanded=True):
+    st.markdown(
+        "**Risk tiers** &nbsp; "
+        "🔴 Prohibited (stop now) &nbsp;·&nbsp; "
+        "🟠 High-risk (Annex I / III — allowed with obligations) &nbsp;·&nbsp; "
+        "🔵 Limited (transparency only) &nbsp;·&nbsp; "
+        "🟢 Minimal (no obligations) &nbsp;·&nbsp; "
+        "🟣 GPAI (foundation-model flag, added on top)"
+    )
+    st.markdown(
+        "**Obligation status** &nbsp; "
+        "⚠️ Likely gap &nbsp;·&nbsp; "
+        "✅ Likely in place &nbsp;·&nbsp; "
+        "❓ Confirm with client"
+    )
+
 client_name = st.text_input("Client / company name", placeholder="e.g. Acme NV")
 
 st.divider()
@@ -120,9 +136,11 @@ for i, s in enumerate(st.session_state.systems):
         if s.get("obligations"):
             st.markdown("**Obligations & gaps:**")
             st.table([
-                {"Status": STATUS_BADGE.get(o.get("status"), "❓ confirm"),
-                 "Obligation": o.get("obligation"), "Deadline": o.get("deadline"),
-                 "Assessment / gap check": o.get("reasoning") or o.get("gap_question")}
+                {"Obligation": o.get("obligation"),
+                 "Deadline": o.get("deadline"),
+                 "Gap check": o.get("gap_question"),
+                 "Assessment": o.get("reasoning"),
+                 "Status": STATUS_BADGE.get(o.get("status"), "❓ confirm")}
                 for o in s["obligations"]
             ])
         if st.button("Remove", key=f"rm_{i}"):

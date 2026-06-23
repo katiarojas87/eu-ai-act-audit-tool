@@ -110,12 +110,12 @@ def generate_report(client_name: str, systems: list[dict],
         obl = s.get("obligations") or []
         if obl:
             story.append(Paragraph("<b>Obligations &amp; compliance gaps</b>", body))
-            orows = [["Obligation", "Deadline", "Status", "Assessment / gap check"]]
+            orows = [["Obligation", "Deadline", "Assessment", "Status"]]
             for o in obl:
                 assessment = o.get("reasoning") or o.get("gap_question", "")
                 orows.append([o.get("obligation", ""), o.get("deadline", ""),
-                              STATUS_LABEL.get(o.get("status"), "Confirm"), assessment])
-            ot = Table(orows, colWidths=[4.5*cm, 2.5*cm, 2.3*cm, 7.7*cm])
+                              assessment, STATUS_LABEL.get(o.get("status"), "Confirm")])
+            ot = Table(orows, colWidths=[4.5*cm, 2.5*cm, 7.7*cm, 2.3*cm])
             style = [
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#33415C")),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -125,9 +125,9 @@ def generate_report(client_name: str, systems: list[dict],
                 ("TOPPADDING", (0, 0), (-1, -1), 4),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
             ]
-            # colour the Status cell by assessment
+            # colour the Status cell by assessment (now column index 3)
             for ri, o in enumerate(obl, start=1):
-                style.append(("TEXTCOLOR", (2, ri), (2, ri),
+                style.append(("TEXTCOLOR", (3, ri), (3, ri),
                               STATUS_COLOR.get(o.get("status"), colors.grey)))
             ot.setStyle(TableStyle(style))
             story.append(ot)
