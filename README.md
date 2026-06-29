@@ -1,11 +1,15 @@
 # EU AI Act Audit Tool
 
-An internal consulting tool for **KRS Solutions** that classifies a client's AI
-systems against Regulation (EU) 2024/1689, lists the obligations and compliance
-gaps, and exports a branded PDF report.
+A compliance audit tool for the EU AI Act (Regulation 2024/1689). You describe a
+company's AI systems in plain language (in Dutch, French, English or Spanish), and
+the tool classifies each one by risk tier (prohibited / high-risk / limited /
+minimal), detects whether it triggers general-purpose AI (GPAI) obligations, maps
+the legal duties that apply, pre-assesses compliance gaps from the system's
+architecture, and produces a branded PDF report with deadlines and fine exposure.
 
-Built with **RAG + LangGraph + Claude**, with **local multilingual embeddings**
-so client data never leaves your machine (Dutch / French / English / Spanish).
+Built as a LangGraph workflow combining RAG over the full legal text with
+multi-step Claude reasoning and local multilingual embeddings, so client data
+never leaves your machine.
 
 ## Architecture
 
