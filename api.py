@@ -10,10 +10,12 @@ import os
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from pydantic import BaseModel
 
 import config
 from facts import extract_facts
+from report_v2 import generate_report
 from rules import classify
 from schema import Assessment
 
@@ -33,6 +35,11 @@ class ClassifyRequest(BaseModel):
     name: str
     description: str
     components: str = ""
+
+
+class ReportRequest(BaseModel):
+    client_name: str
+    systems: list[Assessment]
 
 
 def _check_password(x_app_password: str | None) -> None:
@@ -64,3 +71,19 @@ def classify_endpoint(
         msg = str(e)
         status = 402 if "credit balance" in msg.lower() else 500
         raise HTTPException(status_code=status, detail=msg)
+
+
+@app.post("/report")
+def report_endpoint(
+    body: ReportRequest,
+    x_app_password: str | None = Header(default=None),
+) -> Response:
+    _check_password(x_app_password)
+    if not body.systems:
+        raise HTTPException(status_code=400, detail="No systems to report.")
+    path = generate_report(body.client_name or "Client", body.systems)
+    pdf = path.read_bytes()
+    return Response(
+        content=pdf, media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{path.name}"'},
+    )
