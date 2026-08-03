@@ -112,6 +112,9 @@ table.matrix, table.obl { width: 100%; border-collapse: collapse; font-size: 12.
 .status.definitive { color: var(--definitive); }
 .status.conditional { color: var(--conditional); }
 .status.unresolved { color: var(--unresolved); }
+.status.likely_gap { color: var(--prohibited); }
+.status.likely_in_place { color: var(--minimal); }
+.status.needs_confirmation { color: var(--amber-ink); }
 .kv { font-size: 12.5px; color: var(--ink-2); margin: 3px 0; }
 .kv b { color: var(--ink); font-weight: 500; }
 .miss { font-size: 12.5px; color: var(--ink-2); margin: 3px 0 3px 14px; }

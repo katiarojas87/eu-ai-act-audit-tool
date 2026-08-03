@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 import config
 from facts import extract_facts
+from gaps import assess_gaps
 from report_v2 import generate_report
 from rules import classify
 from schema import Assessment
@@ -66,7 +67,10 @@ def classify_endpoint(
         raise HTTPException(status_code=500, detail="Server missing ANTHROPIC_API_KEY.")
     try:
         facts = extract_facts(body.name, body.description, body.components)
-        return classify(facts, system_name=body.name)
+        assessment = classify(facts, system_name=body.name)
+        assessment.obligations = assess_gaps(
+            assessment.obligations, body.description, body.components)
+        return assessment
     except Exception as e:  # noqa: BLE001
         msg = str(e)
         status = 402 if "credit balance" in msg.lower() else 500

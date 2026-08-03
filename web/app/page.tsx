@@ -20,6 +20,10 @@ const TIER_VAR: Record<string, string> = {
   PROHIBITED: "var(--prohibited)", ANNEX_I: "var(--high)", ANNEX_III: "var(--high)",
   LIMITED: "var(--limited)", MINIMAL: "var(--minimal)", NOT_AI: "var(--notai)",
 };
+const OBL_STATUS: Record<string, string> = {
+  likely_gap: "⚠ likely gap", likely_in_place: "✓ likely in place",
+  needs_confirmation: "? confirm",
+};
 
 const DEMOS: { label: string; name: string; description: string; components: string }[] = [
   {
@@ -204,12 +208,21 @@ export default function Page() {
 
                     {a.obligations.length > 0 && (
                       <>
-                        <div className="mrow-title">Potential obligations</div>
+                        <div className="mrow-title">Potential obligations &amp; gaps</div>
                         <table className="obl">
-                          <thead><tr><th>Obligation</th><th>Deadline</th></tr></thead>
+                          <thead><tr>
+                            <th>Obligation</th><th>Deadline</th><th>Gap check</th>
+                            <th>Assessment</th><th>Status</th>
+                          </tr></thead>
                           <tbody>
                             {a.obligations.map((o, k) => (
-                              <tr key={k}><td>{o.obligation}</td><td className="deadline">{o.deadline}</td></tr>
+                              <tr key={k}>
+                                <td>{o.obligation}</td>
+                                <td className="deadline">{o.deadline}</td>
+                                <td>{o.gap_question}</td>
+                                <td>{o.reasoning}</td>
+                                <td className={`status ${o.status}`}>{OBL_STATUS[o.status] ?? "confirm"}</td>
+                              </tr>
                             ))}
                           </tbody>
                         </table>

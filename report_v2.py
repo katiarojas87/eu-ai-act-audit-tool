@@ -32,6 +32,10 @@ TIER_COLOR = {
     "LIMITED": BLUE, "MINIMAL": colors.HexColor("#2E7D46"), "NOT_AI": MUTE,
 }
 STATUS_COLOR = {"definitive": NAVY, "conditional": AMBER, "unresolved": colors.HexColor("#B0203C")}
+OBL_STATUS_LABEL = {"likely_gap": "Likely gap", "likely_in_place": "Likely in place",
+                    "needs_confirmation": "Confirm"}
+OBL_STATUS_COLOR = {"likely_gap": colors.HexColor("#B0203C"),
+                    "likely_in_place": colors.HexColor("#2E7D46"), "needs_confirmation": AMBER}
 
 _ss = getSampleStyleSheet()
 H1 = ParagraphStyle("H1", parent=_ss["Heading1"], fontName="Helvetica-Bold",
@@ -167,11 +171,29 @@ def generate_report(client_name: str, assessments: list[Assessment],
                                    f"— triggered by: {c.trigger}", BODY))
 
         if a.obligations:
-            S.append(Paragraph("Potential obligations", H2))
-            orows = [["Obligation", "Deadline"]]
+            S.append(Paragraph("Potential obligations &amp; gaps", H2))
+            orows = [["Obligation", "Deadline", "Assessment", "Status"]]
             for o in a.obligations:
-                orows.append([o.obligation, o.deadline])
-            S.append(_table(orows, [12.5 * cm, 4.5 * cm], header_bg=BLUE))
+                orows.append([Paragraph(o.obligation, CELL), o.deadline,
+                              Paragraph(o.reasoning or o.gap_question, CELL),
+                              OBL_STATUS_LABEL.get(o.status, "Confirm")])
+            ot = Table(orows, colWidths=[4.8 * cm, 2.4 * cm, 7.2 * cm, 2.6 * cm])
+            style = [
+                ("BACKGROUND", (0, 0), (-1, 0), BLUE),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("GRID", (0, 0), (-1, -1), 0.4, LINE),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6), ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F5F3EE")]),
+            ]
+            for ri, o in enumerate(a.obligations, start=1):
+                style.append(("TEXTCOLOR", (3, ri), (3, ri),
+                              OBL_STATUS_COLOR.get(o.status, MUTE)))
+            ot.setStyle(TableStyle(style))
+            S.append(ot)
 
         S.append(Paragraph("Missing evidence", H2))
         if a.missing_information:
