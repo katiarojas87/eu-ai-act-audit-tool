@@ -2,9 +2,12 @@
 chroma/
 data/*.pdf
 data/*.txt
+!data/eu_ai_act.txt
+.streamlit/secrets.toml
 reports/*.pdf
 __pycache__/
 *.pyc
 .venv/
 venv/
 .DS_Store
+.claude/
