@@ -30,6 +30,5 @@ RUN python ingest.py
 
 # Cloud Run sends the port to listen on via $PORT (defaults to 8080).
 EXPOSE 8080
-CMD streamlit run app.py \
-    --server.port=${PORT:-8080} \
-    --server.address=0.0.0.0
+# v2 backend: FastAPI (deterministic rule engine + RAG-grounded fact extraction).
+CMD uvicorn api:app --host 0.0.0.0 --port ${PORT:-8080}
