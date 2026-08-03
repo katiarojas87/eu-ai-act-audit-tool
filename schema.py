@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # A fact that is True / False / unknown (None). Unknown drives "unresolved".
 Tri = Optional[bool]
@@ -56,6 +56,23 @@ class Facts(BaseModel):
     gpai_relationship: GpaiRelationship = "none"
     gpai_systemic_risk: Tri = None
     human_oversight: HumanOversight = "unknown"
+
+    # The LLM may emit explicit null for non-boolean fields; map those to the
+    # field default (the Tri booleans keep None = unknown).
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_nulls(cls, data):
+        if isinstance(data, dict):
+            defaults = {
+                "purpose": "", "sector": "", "affected_persons": "",
+                "organisation_role": "unknown", "high_risk_domains": [],
+                "emotion_context": "none", "gpai_relationship": "none",
+                "human_oversight": "unknown",
+            }
+            for k, dflt in defaults.items():
+                if k in data and data[k] is None:
+                    data[k] = dflt
+        return data
 
 
 class Conclusion(BaseModel):
