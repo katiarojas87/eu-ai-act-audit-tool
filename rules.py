@@ -215,6 +215,85 @@ def _prohibition_is_relevant(attr: str, f: Facts) -> bool:
         f.emotion_recognition is True or f.biometric_categorisation_sensitive is True)
 
 
+# Art. 2 carve-outs: (fact attr, provision, why it falls outside the Regulation).
+SCOPE_EXCLUSIONS = [
+    ("military_defence_national_security", "Art. 2(3)",
+     "used exclusively for military, defence or national security purposes"),
+    ("sole_purpose_scientific_research", "Art. 2(6)",
+     "developed and put into service for the sole purpose of scientific research "
+     "and development"),
+    ("personal_non_professional_use", "Art. 2(10)",
+     "used by a natural person in the course of a purely personal, non-professional "
+     "activity"),
+]
+
+
+def _evaluate_scope(f: Facts) -> Conclusion:
+    """Article 2: does the Regulation apply to this system at all?
+
+    Conservative by design. An established carve-out puts the system out of
+    scope; otherwise, absent a clear EU nexus we do NOT quietly exclude it — we
+    continue the assessment and flag the scope question as unresolved.
+    """
+    for attr, ref, why in SCOPE_EXCLUSIONS:
+        if getattr(f, attr) is True:
+            return Conclusion(
+                result="No", detail=f"outside the scope of the Regulation — {why}",
+                articles=[ref, "Art. 2"],
+                trigger=f"{attr} = true", status="definitive")
+
+    # Art. 2(8): pre-market research, testing and development — but testing in
+    # real-world conditions is expressly NOT covered by that exclusion.
+    if f.prerelease_research_testing is True and f.real_world_testing is not True:
+        status = "conditional" if f.real_world_testing is None else "definitive"
+        note = ("" if f.real_world_testing is False else
+                " — unless it involves testing in real-world conditions, which is not "
+                "covered by this exclusion")
+        return Conclusion(
+            result="No",
+            detail="outside scope — research, testing or development activity prior to "
+                   "the system being placed on the market or put into service" + note,
+            articles=["Art. 2(8)"],
+            trigger="prerelease_research_testing = true", status=status)
+
+    hooks = []
+    if f.placed_on_eu_market is True:
+        hooks.append(("Art. 2(1)(a)", "placed on the market or put into service in the Union"))
+    if f.uses_under_own_authority is True and f.established_outside_eu is not True:
+        hooks.append(("Art. 2(1)(b)", "deployer established or located in the Union"))
+    if f.established_outside_eu is True and f.output_used_in_eu is True:
+        hooks.append(("Art. 2(1)(c)",
+                      "third-country provider/deployer whose output is used in the Union"))
+    if f.imports_from_third_country is True or f.makes_available_on_market is True:
+        hooks.append(("Art. 2(1)(d)", "importer or distributor of an AI system"))
+
+    if hooks:
+        return Conclusion(
+            result="Yes", detail="; ".join(d for _, d in hooks),
+            articles=[a for a, _ in hooks] + ["Art. 2"],
+            trigger="an Article 2(1) connecting factor is established",
+            status="definitive")
+
+    # No established nexus and no established carve-out: say so rather than
+    # assuming either way. The assessment continues on the safe assumption that
+    # the Regulation applies.
+    if f.established_outside_eu is True and f.output_used_in_eu is False:
+        return Conclusion(
+            result="No",
+            detail="no EU nexus — established in a third country and the output is not "
+                   "used in the Union",
+            articles=["Art. 2(1)"],
+            trigger="established_outside_eu = true, output_used_in_eu = false",
+            status="definitive")
+
+    return Conclusion(
+        result="Unclear",
+        detail="no EU connecting factor established; the assessment below assumes the "
+               "Regulation applies",
+        articles=["Art. 2(1)"],
+        trigger="territorial-scope facts unknown", status="unresolved")
+
+
 def _derive_roles(f: Facts) -> tuple[list[str], Conclusion]:
     """Work out which role(s) the organisation holds for THIS system.
 
@@ -706,6 +785,7 @@ def classify(f: Facts, system_name: str = "") -> Assessment:
         trigger=f"is_ai_system = {f.is_ai_system}",
         status="definitive" if _known(f.is_ai_system) else "unresolved"))
 
+    scope = _with_sources(_evaluate_scope(f))
     roles, role_basis = _derive_roles(f)
     role_basis = _with_sources(role_basis)
 
@@ -715,7 +795,10 @@ def classify(f: Facts, system_name: str = "") -> Assessment:
     gpai = _with_sources(_evaluate_gpai(f))
 
     # headline tier
-    if f.is_ai_system is False:
+    if scope.result == "No":
+        # Article 2 settles it: no obligations arise under this Regulation.
+        tier = "OUT_OF_SCOPE"
+    elif f.is_ai_system is False:
         tier = "NOT_AI"
     elif f.is_ai_system is None:
         # Nothing is known about the most basic question — say so rather than
@@ -735,7 +818,7 @@ def classify(f: Facts, system_name: str = "") -> Assessment:
     date = {
         "PROHIBITED": DATE_PROHIBITED, "ANNEX_I": DATE_ANNEX_I,
         "ANNEX_III": DATE_ANNEX_III, "LIMITED": DATE_TRANSPARENCY,
-        "MINIMAL": "—", "NOT_AI": "—", "UNDETERMINED": "—",
+        "MINIMAL": "—", "NOT_AI": "—", "UNDETERMINED": "—", "OUT_OF_SCOPE": "—",
     }[tier]
 
     is_gpai = gpai.result == "Yes"
@@ -743,6 +826,9 @@ def classify(f: Facts, system_name: str = "") -> Assessment:
 
     # missing information = decisive facts still unknown
     missing = []
+    if scope.status == "unresolved":
+        missing.append("Whether the system is placed on the EU market, or its output "
+                       "used in the Union — Art. 2(1)")
     for c in (is_ai, prohibited, high_risk, transparency):
         if c.status == "unresolved":
             missing.append(f"{c.detail} — {', '.join(c.articles)}")
@@ -765,9 +851,24 @@ def classify(f: Facts, system_name: str = "") -> Assessment:
         or confidence == "low"
     )
 
+    if tier == "OUT_OF_SCOPE":
+        # Nothing is owed under this Regulation, so no obligations and no review.
+        return Assessment(
+            system_name=system_name, tier=tier, is_gpai=is_gpai,
+            territorial_scope=scope, is_ai_system=is_ai,
+            prohibited_practice=prohibited, high_risk=high_risk,
+            transparency=transparency, gpai=gpai,
+            organisation_role=roles[0], roles=roles, role_basis=role_basis,
+            application_date="—",
+            confidence="high" if scope.status == "definitive" else "medium",
+            missing_information=[],
+            human_review_required=scope.status != "definitive",
+            obligations=[])
+
     return Assessment(
         system_name=system_name,
         tier=tier,
+        territorial_scope=scope,
         is_gpai=is_gpai,
         is_ai_system=is_ai,
         prohibited_practice=prohibited,

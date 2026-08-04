@@ -137,9 +137,17 @@ Run the tests with `pytest` (they need no API key — the rule engine is pure Py
   **conditional** and the report says "suspend and confirm", never "cease
   immediately" — shutting down a lawful system is the costliest error this tool
   could make.
-- Known coverage gaps, deliberately not faked: territorial scope (Art. 2),
-  GPAI downstream-provider roles, and fine exposure (Art. 99) are not yet
-  modelled. The report does not mention fines.
+- **Territorial scope is checked first (Art. 2).** A system with no EU nexus, or
+  caught by a carve-out — military/defence/national security (2(3)), sole-purpose
+  scientific research (2(6)), pre-market research and testing (2(8), but *not*
+  real-world testing), purely personal non-professional use (2(10)) — is reported
+  as `OUT_OF_SCOPE` with no obligations. Where scope cannot be established the
+  tool does **not** quietly exclude the system: it assumes the Regulation applies,
+  continues the assessment, and lists the scope question as missing evidence.
+  The classification matrix still shows the underlying tier, so you can see what
+  the system *would* be if it entered the EU market.
+- Known coverage gaps, deliberately not faked: GPAI downstream-provider roles and
+  fine exposure (Art. 99) are not yet modelled. The report does not mention fines.
 - This produces a structured assessment to support compliance planning — not
   legal advice. Flag high-risk/prohibited calls for legal confirmation.
 ```

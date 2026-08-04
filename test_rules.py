@@ -146,7 +146,7 @@ def test_irrelevant_prohibitions_do_not_block_a_clean_result():
     f = Facts(is_ai_system=True, interacts_with_people=False,
               generates_synthetic_content=False, safety_component_regulated_product=False,
               manipulative_or_exploitative=False, social_scoring=False,
-              organisation_role="deployer")
+              organisation_role="deployer", placed_on_eu_market=True)
     a = classify(f, "Spam Filter")
     assert a.prohibited_practice.result == "No"
     assert a.confidence == "high"
@@ -166,7 +166,7 @@ def test_confidence_discriminates_across_inputs():
     clean = Facts(is_ai_system=True, interacts_with_people=False,
                   generates_synthetic_content=False, safety_component_regulated_product=False,
                   manipulative_or_exploitative=False, social_scoring=False,
-                  organisation_role="provider")
+                  organisation_role="provider", placed_on_eu_market=True)
     assert classify(clean).confidence == "high"
     assert classify(Facts()).confidence == "low"
 
@@ -475,3 +475,82 @@ def test_every_article_5_provision_cited_has_a_source():
         a = classify(f)
         for ref in a.prohibited_practice.articles:
             assert get_source(ref), f"{ref} has no verbatim source"
+
+
+# --- Article 2: territorial scope ---------------------------------------------
+def test_us_only_system_is_out_of_scope():
+    """The Act does not reach a third-country system whose output is not used here."""
+    a = classify(_ai(high_risk_domains=["employment"], established_outside_eu=True,
+                     output_used_in_eu=False, uses_under_own_authority=True))
+    assert a.tier == "OUT_OF_SCOPE"
+    assert a.obligations == []
+    assert a.territorial_scope.status == "definitive"
+
+
+def test_third_country_system_is_in_scope_when_output_used_in_the_union():
+    a = classify(_ai(high_risk_domains=["employment"], established_outside_eu=True,
+                     output_used_in_eu=True))
+    assert a.tier == "ANNEX_III"
+    assert "Art. 2(1)(c)" in a.territorial_scope.articles
+
+
+def test_placing_on_the_eu_market_brings_it_in_scope():
+    a = classify(_ai(high_risk_domains=["credit"], placed_on_eu_market=True))
+    assert a.territorial_scope.result == "Yes"
+    assert "Art. 2(1)(a)" in a.territorial_scope.articles
+
+
+def test_military_and_national_security_are_excluded():
+    a = classify(_ai(high_risk_domains=["law_enforcement"], placed_on_eu_market=True,
+                     military_defence_national_security=True))
+    assert a.tier == "OUT_OF_SCOPE"
+    assert "Art. 2(3)" in a.territorial_scope.articles
+
+
+def test_scientific_research_is_excluded():
+    a = classify(_ai(high_risk_domains=["employment"],
+                     sole_purpose_scientific_research=True))
+    assert a.tier == "OUT_OF_SCOPE"
+    assert "Art. 2(6)" in a.territorial_scope.articles
+
+
+def test_personal_non_professional_use_is_excluded():
+    a = classify(_ai(personal_non_professional_use=True, interacts_with_people=True))
+    assert a.tier == "OUT_OF_SCOPE"
+    assert "Art. 2(10)" in a.territorial_scope.articles
+
+
+def test_prerelease_testing_excluded_but_real_world_testing_is_not():
+    lab = classify(_ai(high_risk_domains=["credit"], prerelease_research_testing=True,
+                       real_world_testing=False))
+    assert lab.tier == "OUT_OF_SCOPE"
+
+    field = classify(_ai(high_risk_domains=["credit"], prerelease_research_testing=True,
+                         real_world_testing=True, placed_on_eu_market=True))
+    assert field.tier == "ANNEX_III"
+
+
+def test_prerelease_testing_is_conditional_while_real_world_unknown():
+    a = classify(_ai(high_risk_domains=["credit"], prerelease_research_testing=True))
+    assert a.tier == "OUT_OF_SCOPE"
+    assert a.territorial_scope.status == "conditional"
+    assert a.human_review_required is True
+
+
+def test_unknown_scope_does_not_silently_exclude():
+    """Absent facts we assume the Regulation applies, and say so."""
+    a = classify(_ai(high_risk_domains=["employment"]))
+    assert a.tier == "ANNEX_III"
+    assert a.territorial_scope.result == "Unclear"
+    assert a.obligations
+    assert any("Art. 2(1)" in m for m in a.missing_information)
+
+
+def test_scope_conclusion_is_cited():
+    for f in (_ai(placed_on_eu_market=True),
+              _ai(military_defence_national_security=True),
+              _ai(sole_purpose_scientific_research=True),
+              _ai(established_outside_eu=True, output_used_in_eu=True)):
+        a = classify(f)
+        assert a.territorial_scope.articles
+        assert a.territorial_scope.sources, "scope conclusion has no verbatim source"

@@ -58,6 +58,21 @@ Rules:
       authorised in advance by a judicial or independent authority.
 - subliminal_or_manipulative (5(1)(a)) and exploits_vulnerabilities (5(1)(b)) are
   SEPARATE prohibitions — set whichever the description supports.
+- TERRITORIAL SCOPE (Art. 2) — the Regulation does not apply to everything:
+    placed_on_eu_market   — is the system placed on the market or put into
+                            service in the EU?
+    output_used_in_eu     — if the organisation is outside the EU, is the
+                            system's OUTPUT used in the Union?
+    military_defence_national_security — used exclusively for military, defence
+                            or national security purposes? (Art. 2(3))
+    sole_purpose_scientific_research   — built and put into service solely for
+                            scientific research and development? (Art. 2(6))
+    prerelease_research_testing        — research/testing/development before the
+                            system is placed on the market? (Art. 2(8))
+    real_world_testing    — does that testing happen in real-world conditions?
+                            (this cancels the Art. 2(8) exclusion)
+    personal_non_professional_use      — a natural person using it purely
+                            personally, not professionally? (Art. 2(10))
 - ROLE FACTS — do NOT try to decide whether they are a "provider" or "deployer";
   that is a legal conclusion the rule engine draws. Just answer what they did:
     developed_or_commissioned  — did they build it, or have it built for them?
@@ -94,6 +109,9 @@ Rules:
 
 Reply with ONLY a JSON object matching these keys (omit a key to leave it null/default):
 is_ai_system, purpose, sector, affected_persons, high_risk_domains,
+placed_on_eu_market, output_used_in_eu, military_defence_national_security,
+sole_purpose_scientific_research, prerelease_research_testing, real_world_testing,
+personal_non_professional_use,
 developed_or_commissioned, supplied_under_own_name, uses_under_own_authority,
 rebranded_or_modified, imports_from_third_country, makes_available_on_market,
 established_outside_eu, public_body_or_public_service, sectoral_regime,

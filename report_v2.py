@@ -30,7 +30,7 @@ LINE = colors.HexColor("#D8D5CC")
 TIER_COLOR = {
     "PROHIBITED": colors.HexColor("#B0203C"), "ANNEX_I": AMBER, "ANNEX_III": AMBER,
     "LIMITED": BLUE, "MINIMAL": colors.HexColor("#2E7D46"), "NOT_AI": MUTE,
-    "UNDETERMINED": MUTE,
+    "UNDETERMINED": MUTE, "OUT_OF_SCOPE": MUTE,
 }
 STATUS_COLOR = {"definitive": NAVY, "conditional": AMBER, "unresolved": colors.HexColor("#B0203C")}
 OBL_STATUS_LABEL = {"likely_gap": "Likely gap", "likely_in_place": "Likely in place",
@@ -79,6 +79,11 @@ def _table(rows, widths, header_bg=NAVY, status_col=None):
 
 def _recommended_actions(a: Assessment) -> list[str]:
     acts = []
+    if a.tier == "OUT_OF_SCOPE":
+        return ["Confirm the facts behind the scope conclusion, then re-assess if the "
+                "system is placed on the EU market, its output starts being used in the "
+                "Union, or its purpose changes. Other Union and national law "
+                "(GDPR, sectoral rules) may still apply."]
     if a.tier == "PROHIBITED":
         if a.prohibited_practice.status == "conditional":
             acts.append("Suspend use pending legal review — the system matches an "
@@ -176,13 +181,26 @@ def generate_report(client_name: str, assessments: list[Assessment],
                 ["Human review required", "Yes" if a.human_review_required else "No"]]
         S.append(_table([["Field", "Value"]] + prof, [5 * cm, 12 * cm]))
 
+        if a.tier == "OUT_OF_SCOPE" and a.territorial_scope:
+            S.append(Paragraph("Outside the scope of the Regulation", H2))
+            S.append(Paragraph(
+                f"<b>{a.territorial_scope.detail}</b> "
+                f"<font color='{MUTE.hexval()}'>"
+                f"({', '.join(a.territorial_scope.articles)})</font><br/>"
+                "No obligations arise under Regulation (EU) 2024/1689 on this basis. "
+                "Other Union or national law may still apply. Re-assess if the system "
+                "is placed on the EU market, its output becomes used in the Union, or "
+                "its purpose changes.", BODY))
+
         S.append(Paragraph("Classification matrix", H2))
-        matrix = [["Dimension", "Result", "Provision(s)", "Status"],
-                  _matrix_row("Is it an AI system?", a.is_ai_system),
-                  _matrix_row("Prohibited practice", a.prohibited_practice),
-                  _matrix_row("High-risk system", a.high_risk),
-                  _matrix_row("Transparency obligations", a.transparency),
-                  _matrix_row("GPAI relationship", a.gpai)]
+        matrix = [["Dimension", "Result", "Provision(s)", "Status"]]
+        if a.territorial_scope:
+            matrix.append(_matrix_row("In scope (Art. 2)?", a.territorial_scope))
+        matrix += [_matrix_row("Is it an AI system?", a.is_ai_system),
+                   _matrix_row("Prohibited practice", a.prohibited_practice),
+                   _matrix_row("High-risk system", a.high_risk),
+                   _matrix_row("Transparency obligations", a.transparency),
+                   _matrix_row("GPAI relationship", a.gpai)]
         S.append(_table(matrix, [4.6 * cm, 3.2 * cm, 5.7 * cm, 3.5 * cm], status_col=3))
 
         S.append(Paragraph("Triggered rules", H2))

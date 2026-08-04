@@ -11,6 +11,7 @@ type Assessment = {
   system_name: string; tier: string; is_gpai: boolean;
   is_ai_system: Conclusion; prohibited_practice: Conclusion; high_risk: Conclusion;
   transparency: Conclusion; gpai: Conclusion;
+  territorial_scope?: Conclusion | null;
   organisation_role: string; roles?: string[]; role_basis?: Conclusion | null;
   application_date: string; confidence: string;
   missing_information: string[]; human_review_required: boolean; obligations: Obligation[];
@@ -20,11 +21,12 @@ const TIER_LABEL: Record<string, string> = {
   PROHIBITED: "Prohibited", ANNEX_I: "High-risk — Annex I", ANNEX_III: "High-risk — Annex III",
   LIMITED: "Limited risk", MINIMAL: "Minimal risk", NOT_AI: "Not an AI system",
   UNDETERMINED: "Undetermined — not enough facts",
+  OUT_OF_SCOPE: "Outside the scope of the Regulation",
 };
 const TIER_VAR: Record<string, string> = {
   PROHIBITED: "var(--prohibited)", ANNEX_I: "var(--high)", ANNEX_III: "var(--high)",
   LIMITED: "var(--limited)", MINIMAL: "var(--minimal)", NOT_AI: "var(--notai)",
-  UNDETERMINED: "var(--notai)",
+  UNDETERMINED: "var(--notai)", OUT_OF_SCOPE: "var(--notai)",
 };
 const OBL_STATUS: Record<string, string> = {
   likely_gap: "⚠ likely gap", likely_in_place: "✓ likely in place",
@@ -200,6 +202,9 @@ export default function Page() {
             {systems.map((a, i) => {
               const tc = TIER_VAR[a.tier] ?? "var(--notai)";
               const dims: [string, Conclusion][] = [
+                ...(a.territorial_scope
+                  ? ([["In scope (Art. 2)?", a.territorial_scope]] as [string, Conclusion][])
+                  : []),
                 ["Is it an AI system?", a.is_ai_system],
                 ["Prohibited practice", a.prohibited_practice],
                 ["High-risk system", a.high_risk],
@@ -222,6 +227,16 @@ export default function Page() {
                     </div>
                   </div>
                   <div className="vbody">
+                    {a.tier === "OUT_OF_SCOPE" && a.territorial_scope && (
+                      <div className="miss-note">
+                        <b>{a.territorial_scope.detail}</b>{" "}
+                        ({a.territorial_scope.articles.join(", ")}). No obligations arise
+                        under Regulation (EU) 2024/1689 on this basis. Other Union or
+                        national law may still apply. Re-assess if the system is placed on
+                        the EU market, its output becomes used in the Union, or its purpose
+                        changes.
+                      </div>
+                    )}
                     <div className="kv">
                       <b>Role(s):</b> {(a.roles?.length ? a.roles : [a.organisation_role]).join(" + ")}
                       &nbsp;·&nbsp; <b>Application date:</b> {a.application_date}

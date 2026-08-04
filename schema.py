@@ -72,6 +72,18 @@ class Facts(BaseModel):
     affected_persons: str = ""
     high_risk_domains: list[HighRiskDomain] = Field(default_factory=list)
 
+    # --- territorial scope (Article 2) ---------------------------------------
+    # The Regulation does not apply to everything everywhere. Without these the
+    # tool hands a full EU compliance report to a system with no EU nexus.
+    placed_on_eu_market: Tri = None          # Art. 2(1)(a): placed/put into service in the Union
+    output_used_in_eu: Tri = None            # Art. 2(1)(c): third-country actor, output used in the Union
+    # Express carve-outs.
+    military_defence_national_security: Tri = None   # Art. 2(3), "exclusively"
+    sole_purpose_scientific_research: Tri = None     # Art. 2(6)
+    prerelease_research_testing: Tri = None          # Art. 2(8), before placing on market
+    real_world_testing: Tri = None                   # defeats the Art. 2(8) carve-out
+    personal_non_professional_use: Tri = None        # Art. 2(10), natural persons only
+
     # --- role in the AI value chain ------------------------------------------
     # Role is a legal conclusion (Art. 3(3)–(7), Art. 25), not something to ask
     # the model for directly. Collect observable facts; rules.py derives the
@@ -232,6 +244,7 @@ class Assessment(BaseModel):
     tier: str = "NOT_AI"              # headline tier for badge/PDF compatibility
     is_gpai: bool = False
 
+    territorial_scope: Conclusion | None = None   # Art. 2 — does the Act apply at all?
     is_ai_system: Conclusion
     prohibited_practice: Conclusion
     high_risk: Conclusion
