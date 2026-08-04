@@ -33,6 +33,41 @@ const OBL_STATUS: Record<string, string> = {
   needs_confirmation: "? confirm",
 };
 const ROLES = ["unknown", "provider", "deployer", "importer", "distributor"] as const;
+
+// Article 2. A description almost never volunteers "our output is not used in
+// the EU" or "this is pre-market testing", so scope has to be askable directly —
+// otherwise an out-of-scope system is never identified as one.
+const NEXUS_OPTIONS: { value: string; label: string }[] = [
+  { value: "unknown", label: "Infer from the description" },
+  { value: "eu_market", label: "Placed on the EU market / put into service in the EU" },
+  { value: "output_in_eu", label: "Outside the EU, but its output is used in the EU" },
+  { value: "none", label: "No EU nexus at all" },
+];
+const CARVE_OUTS: { key: keyof ScopeOverride; label: string }[] = [
+  { key: "military_defence_national_security", label: "Military, defence or national security only — Art. 2(3)" },
+  { key: "sole_purpose_scientific_research", label: "Sole purpose of scientific research & development — Art. 2(6)" },
+  { key: "prerelease_research_testing", label: "Research / testing before being placed on the market — Art. 2(8)" },
+  { key: "real_world_testing", label: "…and that testing is in real-world conditions (cancels Art. 2(8))" },
+  { key: "personal_non_professional_use", label: "Purely personal, non-professional use — Art. 2(10)" },
+];
+
+type ScopeOverride = {
+  nexus: string;
+  military_defence_national_security: boolean;
+  sole_purpose_scientific_research: boolean;
+  prerelease_research_testing: boolean;
+  real_world_testing: boolean;
+  personal_non_professional_use: boolean;
+};
+
+const EMPTY_SCOPE: ScopeOverride = {
+  nexus: "unknown",
+  military_defence_national_security: false,
+  sole_purpose_scientific_research: false,
+  prerelease_research_testing: false,
+  real_world_testing: false,
+  personal_non_professional_use: false,
+};
 const ROLE_HEADING: Record<string, string> = {
   provider: "As provider", deployer: "As deployer", importer: "As importer",
   distributor: "As distributor", all: "Applies to everyone in scope",
@@ -80,6 +115,7 @@ export default function Page() {
   const [desc, setDesc] = useState("");
   const [components, setComponents] = useState("");
   const [role, setRole] = useState<string>("unknown");
+  const [scope, setScope] = useState<ScopeOverride>(EMPTY_SCOPE);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [systems, setSystems] = useState<Assessment[]>([]);
@@ -97,11 +133,18 @@ export default function Page() {
       const res = await fetch("/api/classify", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-app-password": password },
-        body: JSON.stringify({ name, description: desc, components, organisation_role: role }),
+        body: JSON.stringify({
+          name, description: desc, components,
+          organisation_role: role, scope,
+        }),
       });
       const data = await res.json();
       if (!res.ok) setError(data.detail || data.error || "Something went wrong.");
-      else { setSystems((s) => [...s, data]); setName(""); setDesc(""); setComponents(""); setRole("unknown"); }
+      else {
+        setSystems((s) => [...s, data]);
+        setName(""); setDesc(""); setComponents("");
+        setRole("unknown"); setScope(EMPTY_SCOPE);
+      }
     } catch { setError("Network error — please try again."); }
     finally { setLoading(false); }
   }
@@ -186,6 +229,40 @@ export default function Page() {
                 beats inference — a deployer owes no CE marking.
               </p>
             </div>
+
+            <details className="scope">
+              <summary>Scope (Art. 2) — set what you already know</summary>
+              <div className="field">
+                <label htmlFor="nexus">Connection to the Union</label>
+                <select
+                  id="nexus"
+                  value={scope.nexus}
+                  onChange={(e) => setScope({ ...scope, nexus: e.target.value })}
+                >
+                  {NEXUS_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label>Carve-outs — tick only what you can confirm</label>
+                {CARVE_OUTS.map((c) => (
+                  <label key={c.key} className="check">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(scope[c.key])}
+                      onChange={(e) => setScope({ ...scope, [c.key]: e.target.checked })}
+                    />
+                    <span>{c.label}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="hint">
+                A description rarely says &ldquo;our output is not used in the EU&rdquo;,
+                so without this the tool assumes the Regulation applies. Anything left
+                untouched is inferred from the description, not assumed false.
+              </p>
+            </details>
 
             <button className="btn-primary" onClick={classify} disabled={loading}>
               {loading ? "Classifying…" : "Classify system"}

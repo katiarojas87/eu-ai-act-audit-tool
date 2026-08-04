@@ -159,11 +159,13 @@ gpai_relationship, gpai_systemic_risk, human_oversight."""
 
 
 def extract_facts(name: str, description: str, components: str = "",
-                  organisation_role: str = "unknown") -> Facts:
+                  organisation_role: str = "unknown",
+                  overrides: dict | None = None) -> Facts:
     """Extract Facts from a description.
 
-    `organisation_role` is the consultant's override: when they know the client's
-    role from the conversation, it beats anything inferred from the text.
+    `organisation_role` and `overrides` are consultant-supplied: when they know
+    a fact from the client conversation, it beats anything inferred from the
+    text. `overrides` maps Facts field names to values (see scope_input.py).
     """
     passages = retrieve(f"{name}. {description} {components}", k=config.TOP_K)
     context = "\n\n".join(f"[{p['source']}]\n{p['text']}" for p in passages)
@@ -180,6 +182,7 @@ def extract_facts(name: str, description: str, components: str = "",
     data = json.loads(text[start:end + 1]) if start != -1 else {}
     if organisation_role and organisation_role != "unknown":
         data["organisation_role"] = organisation_role
+    data.update(overrides or {})
     return Facts.model_validate(data)
 
 

@@ -127,10 +127,14 @@ it can no longer say "biometrics, but excluded by Annex III(1)(a)".
 3. **Set the client's role** if you know it (provider / deployer / …). The
    override beats inference, and it decides which obligations they get — a
    deployer owes no CE marking.
-4. The tool returns a tier, a classification matrix citing the provision behind
+4. **Open "Scope (Art. 2)" and set what you know.** Clients rarely say "our
+   output is not used in the EU" or "this is still pre-market testing", so
+   without this an out-of-scope system is never identified as one. Anything left
+   untouched is inferred from the description, not assumed false.
+5. The tool returns a tier, a classification matrix citing the provision behind
    each conclusion, and obligations grouped by role. Facts it could not establish
    are listed as missing evidence rather than guessed.
-5. Review the gap-check questions, then export the PDF.
+6. Review the gap-check questions, then export the PDF.
 
 ## Files
 
@@ -149,7 +153,9 @@ it can no longer say "biometrics, but excluded by Annex III(1)(a)".
 | `retriever.py` | Multilingual semantic search over the law. |
 | `api.py` | FastAPI backend for the frontend. |
 | `web/` | **The frontend** — Next.js. The only UI. |
-| `test_rules.py`, `test_citations.py` | Unit tests — run `pytest`. |
+| `scope_input.py` | Consultant-supplied Art. 2 scope facts from the UI. |
+| `eval/` | Golden set + scorer for fact-extraction accuracy. |
+| `test_*.py` | Unit tests — run `pytest` (225, no API key needed). |
 
 ## Notes
 

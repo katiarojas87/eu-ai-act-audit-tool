@@ -21,6 +21,7 @@ from gaps import assess_gaps
 from report_v2 import generate_report
 from rules import classify
 from schema import Assessment
+from scope_input import ScopeOverride, to_fact_overrides
 
 log = logging.getLogger("eu_ai_act.api")
 
@@ -43,9 +44,9 @@ class ClassifyRequest(BaseModel):
     name: str
     description: str
     components: str = ""
-    # Consultant override — "provider" / "deployer" / "importer" / "distributor".
-    # Beats anything inferred from the description.
-    organisation_role: str = "unknown"
+    # Consultant overrides — beat anything inferred from the description.
+    organisation_role: str = "unknown"          # provider / deployer / importer / …
+    scope: ScopeOverride | None = None          # Article 2 facts (see scope_input.py)
 
 
 class ReportRequest(BaseModel):
@@ -90,7 +91,8 @@ def classify_endpoint(
         raise HTTPException(status_code=500, detail="Server missing ANTHROPIC_API_KEY.")
     try:
         facts = extract_facts(body.name, body.description, body.components,
-                              organisation_role=body.organisation_role)
+                              organisation_role=body.organisation_role,
+                              overrides=to_fact_overrides(body.scope))
         assessment = classify(facts, system_name=body.name)
         assessment.obligations = assess_gaps(
             assessment.obligations, body.description, body.components)
