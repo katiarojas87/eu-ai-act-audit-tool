@@ -125,6 +125,9 @@ table.matrix, table.obl { width: 100%; border-collapse: collapse; font-size: 12.
 .srcq q { display: block; font-family: var(--font-serif), serif; font-size: 12px; line-height: 1.5; color: var(--ink); }
 .srcq a { display: inline-block; margin-top: 5px; font-size: 10.5px; color: var(--blue); }
 
+.unsourced { margin-top: 5px; font-family: var(--font-sans), sans-serif; font-size: 10.5px; color: var(--prohibited); }
+.miss-note { font-size: 12px; color: var(--ink-2); background: var(--paper-2); border-left: 2px solid var(--amber); padding: 7px 10px; margin: 0 0 8px; }
+
 .kv { font-size: 12.5px; color: var(--ink-2); margin: 3px 0; }
 .kv b { color: var(--ink); font-weight: 500; }
 .miss { font-size: 12.5px; color: var(--ink-2); margin: 3px 0 3px 14px; }

@@ -91,6 +91,9 @@ class Conclusion(BaseModel):
     trigger: str = ""                 # the factual answer that triggered it
     status: Status = "unresolved"
     sources: list[SourceQuote] = Field(default_factory=list)  # verbatim law text
+    # Provisions we cite but could not locate verbatim in the official text.
+    # Surfaced as "confirmation needed" — never silently omitted.
+    unsourced: list[str] = Field(default_factory=list)
 
 
 class Obligation(BaseModel):

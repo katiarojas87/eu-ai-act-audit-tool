@@ -136,12 +136,45 @@ def _clean(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
+_ART3_RE = re.compile(r"Art\.?\s*3\((\d{1,2})\)")
+
+
+def _article_3_definition(ref: str) -> dict | None:
+    """Resolve any Article 3 definition — Art. 3(1) … Art. 3(42) — generically."""
+    m = _ART3_RE.fullmatch(ref.strip())
+    if not m:
+        return None
+    text = _law_text()
+    start = text.find("Article 3 Definitions")
+    if start == -1:
+        return None
+    n = m.group(1)
+    # definitions read: "(N) ‘term’ means …"
+    pat = re.compile(rf"\({n}\)\s*[‘'][^’']{{2,80}}[’']\s*means")
+    hit = pat.search(text, start, start + 40000)
+    if not hit:
+        return None
+    i = hit.start()
+    end = text.find(";", i)
+    stop = text.find(". ", i)
+    end = min(x for x in (end, stop, i + 600) if x > i)
+    return {
+        "ref": ref,
+        "quote": _clean(text[i:end + 1]),
+        "location": f"Article 3 definitions, character offset {i:,}",
+        "url": EURLEX_URL,
+    }
+
+
 @lru_cache(maxsize=256)
 def get_source(ref: str) -> dict | None:
     """Return {ref, quote, location, url} for a provision, or None if not found."""
     text = _law_text()
     if not text:
         return None
+    generic = _article_3_definition(ref)
+    if generic:
+        return generic
     low = text.lower()
     for anchor in ANCHORS.get(ref, []):
         i = low.find(anchor.lower())

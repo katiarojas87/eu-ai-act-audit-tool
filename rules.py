@@ -80,8 +80,16 @@ def _known(v):
 
 
 def _with_sources(c: Conclusion) -> Conclusion:
-    """Attach the verbatim EU AI Act text behind each cited provision."""
-    c.sources = [SourceQuote(**s) for s in sources_for(c.articles)]
+    """Attach the verbatim EU AI Act text behind each cited provision.
+
+    Any provision we cannot locate verbatim is listed in `unsourced` so the
+    report can flag it as "confirmation needed" rather than pass it off as
+    verified.
+    """
+    found = sources_for(c.articles)
+    c.sources = [SourceQuote(**s) for s in found]
+    got = {s["ref"] for s in found}
+    c.unsourced = [a for a in c.articles if a not in got]
     return c
 
 

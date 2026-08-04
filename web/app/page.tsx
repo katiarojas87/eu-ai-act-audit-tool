@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 type SourceQuote = { ref: string; quote: string; location: string; url: string };
-type Conclusion = { result: string; detail: string; articles: string[]; trigger: string; status: string; sources: SourceQuote[] };
+type Conclusion = { result: string; detail: string; articles: string[]; trigger: string; status: string; sources: SourceQuote[]; unsourced: string[] };
 type Obligation = { obligation: string; deadline: string; status: string; reasoning: string; gap_question: string };
 type Assessment = {
   system_name: string; tier: string; is_gpai: boolean;
@@ -106,7 +106,6 @@ export default function Page() {
           <p>Describe an AI system in plain language (NL / FR / EN / ES). A deterministic
             rule engine classifies it across independent dimensions and cites the provision
             behind every conclusion. A decision-support tool — not legal advice.</p>
-          <p className="reg">Regulation (EU) 2024/1689 · Annexes I &amp; III · Article 5 · GPAI</p>
         </div>
       </header>
 
@@ -120,6 +119,15 @@ export default function Page() {
               <label htmlFor="pw">Access password</label>
               <input id="pw" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Shared password" />
             </div>
+            <div className="field">
+              <label>Demo cases</label>
+              <div className="demos">
+                {DEMOS.map((d) => (
+                  <button key={d.label} className="demo-btn" onClick={() => loadDemo(d)}>{d.label}</button>
+                ))}
+              </div>
+            </div>
+
             <div className="field">
               <label htmlFor="client">Client / company (for the report)</label>
               <input id="client" type="text" value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="e.g. Sample Public Sector NV" />
@@ -142,15 +150,6 @@ export default function Page() {
             </button>
             {loading && <div className="loading"><span className="spinner" />Running the rule engine…</div>}
             {error && <div className="err">{error}</div>}
-
-            <div className="field" style={{ marginTop: 18 }}>
-              <label>Demo cases</label>
-              <div className="demos">
-                {DEMOS.map((d) => (
-                  <button key={d.label} className="demo-btn" onClick={() => loadDemo(d)}>{d.label}</button>
-                ))}
-              </div>
-            </div>
           </section>
 
           <section>
@@ -207,6 +206,11 @@ export default function Page() {
                                   ))}
                                 </details>
                               )}
+                              {c.unsourced?.length > 0 && (
+                                <div className="unsourced">
+                                  confirmation needed — wording not located for {c.unsourced.join(", ")}
+                                </div>
+                              )}
                             </td>
                             <td className={`status ${c.status}`}>{c.status}</td>
                           </tr>
@@ -217,6 +221,11 @@ export default function Page() {
                     {a.missing_information.length > 0 && (
                       <>
                         <div className="mrow-title">Missing evidence</div>
+                        <div className="miss-note">
+                          The description did not establish the facts below. They were left
+                          unresolved rather than assumed — confirm them with the client before
+                          relying on this assessment.
+                        </div>
                         {a.missing_information.map((m, k) => <div className="miss" key={k}>• {m}</div>)}
                       </>
                     )}

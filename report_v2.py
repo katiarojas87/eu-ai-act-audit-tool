@@ -174,10 +174,11 @@ def generate_report(client_name: str, assessments: list[Assessment],
             S.append(Paragraph("Potential obligations &amp; gaps", H2))
             orows = [["Obligation", "Deadline", "Assessment", "Status"]]
             for o in a.obligations:
-                orows.append([Paragraph(o.obligation, CELL), o.deadline,
+                orows.append([Paragraph(o.obligation, CELL),
+                              Paragraph(o.deadline, CELL),
                               Paragraph(o.reasoning or o.gap_question, CELL),
                               OBL_STATUS_LABEL.get(o.status, "Confirm")])
-            ot = Table(orows, colWidths=[4.8 * cm, 2.4 * cm, 7.2 * cm, 2.6 * cm])
+            ot = Table(orows, colWidths=[4.6 * cm, 3.0 * cm, 6.6 * cm, 2.8 * cm])
             style = [
                 ("BACKGROUND", (0, 0), (-1, 0), BLUE),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -197,6 +198,10 @@ def generate_report(client_name: str, assessments: list[Assessment],
 
         S.append(Paragraph("Missing evidence", H2))
         if a.missing_information:
+            S.append(Paragraph("The description did not establish the facts below. They were "
+                               "left unresolved rather than assumed — confirm them before "
+                               "relying on this assessment.", SMALL))
+            S.append(Spacer(1, 3))
             for m in a.missing_information:
                 S.append(Paragraph(f"• {m}", BODY))
         else:
@@ -218,6 +223,18 @@ def generate_report(client_name: str, assessments: list[Assessment],
                 S.append(Spacer(1, 4))
         if not seen:
             S.append(Paragraph("Provisions cited: " + " · ".join(_sources(a)), SMALL))
+
+        unsourced = sorted({r for c in (a.is_ai_system, a.prohibited_practice,
+                                        a.high_risk, a.transparency, a.gpai)
+                            for r in c.unsourced})
+        if unsourced:
+            S.append(Spacer(1, 4))
+            S.append(Paragraph(
+                "<b>Confirmation needed —</b> the wording of the following provisions "
+                "could not be located verbatim in the source text and was not "
+                "interpreted: " + " · ".join(unsourced) +
+                ". Verify these directly against the official text before relying on them.",
+                ParagraphStyle("warn", parent=SMALL, textColor=colors.HexColor("#B0203C"))))
         S.append(Paragraph("Based on Regulation (EU) 2024/1689 (Annexes I &amp; III, "
                            "Article 5, GPAI rules) and the curated knowledge base. "
                            "Classification is deterministic; fact extraction from the "
