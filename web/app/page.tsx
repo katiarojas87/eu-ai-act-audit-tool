@@ -2,29 +2,53 @@
 
 import { useState } from "react";
 
-type SourceQuote = { ref: string; quote: string; location: string; url: string };
+// "operative" = binding enacting terms. "recital" = non-binding preamble, shown
+// with a warning so it is never read as the rule itself.
+type SourceQuote = { ref: string; quote: string; location: string; url: string; kind?: string };
 type Conclusion = { result: string; detail: string; articles: string[]; trigger: string; status: string; sources: SourceQuote[]; unsourced: string[] };
-type Obligation = { obligation: string; deadline: string; status: string; reasoning: string; gap_question: string };
+type Obligation = { obligation: string; deadline: string; status: string; reasoning: string; gap_question: string; role?: string; article?: string };
 type Assessment = {
   system_name: string; tier: string; is_gpai: boolean;
   is_ai_system: Conclusion; prohibited_practice: Conclusion; high_risk: Conclusion;
   transparency: Conclusion; gpai: Conclusion;
-  organisation_role: string; application_date: string; confidence: string;
+  organisation_role: string; roles?: string[]; role_basis?: Conclusion | null;
+  application_date: string; confidence: string;
   missing_information: string[]; human_review_required: boolean; obligations: Obligation[];
 };
 
 const TIER_LABEL: Record<string, string> = {
   PROHIBITED: "Prohibited", ANNEX_I: "High-risk — Annex I", ANNEX_III: "High-risk — Annex III",
   LIMITED: "Limited risk", MINIMAL: "Minimal risk", NOT_AI: "Not an AI system",
+  UNDETERMINED: "Undetermined — not enough facts",
 };
 const TIER_VAR: Record<string, string> = {
   PROHIBITED: "var(--prohibited)", ANNEX_I: "var(--high)", ANNEX_III: "var(--high)",
   LIMITED: "var(--limited)", MINIMAL: "var(--minimal)", NOT_AI: "var(--notai)",
+  UNDETERMINED: "var(--notai)",
 };
 const OBL_STATUS: Record<string, string> = {
   likely_gap: "⚠ likely gap", likely_in_place: "✓ likely in place",
   needs_confirmation: "? confirm",
 };
+const ROLES = ["unknown", "provider", "deployer", "importer", "distributor"] as const;
+const ROLE_HEADING: Record<string, string> = {
+  provider: "As provider", deployer: "As deployer", importer: "As importer",
+  distributor: "As distributor", all: "Applies to everyone in scope",
+};
+
+/** Group obligations by the role that owes them, so a deployer never reads the
+ *  provider's duties as their own. */
+function byRole(obligations: Obligation[]): [string, Obligation[]][] {
+  const groups = new Map<string, Obligation[]>();
+  for (const o of obligations) {
+    const r = o.role || "all";
+    if (!groups.has(r)) groups.set(r, []);
+    groups.get(r)!.push(o);
+  }
+  return [...groups.entries()].sort(
+    ([a], [b]) => Number(a === "all") - Number(b === "all") || a.localeCompare(b),
+  );
+}
 
 const DEMOS: { label: string; name: string; description: string; components: string }[] = [
   {
@@ -53,6 +77,7 @@ export default function Page() {
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
   const [components, setComponents] = useState("");
+  const [role, setRole] = useState<string>("unknown");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [systems, setSystems] = useState<Assessment[]>([]);
@@ -70,11 +95,11 @@ export default function Page() {
       const res = await fetch("/api/classify", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-app-password": password },
-        body: JSON.stringify({ name, description: desc, components }),
+        body: JSON.stringify({ name, description: desc, components, organisation_role: role }),
       });
       const data = await res.json();
       if (!res.ok) setError(data.detail || data.error || "Something went wrong.");
-      else { setSystems((s) => [...s, data]); setName(""); setDesc(""); setComponents(""); }
+      else { setSystems((s) => [...s, data]); setName(""); setDesc(""); setComponents(""); setRole("unknown"); }
     } catch { setError("Network error — please try again."); }
     finally { setLoading(false); }
   }
@@ -144,6 +169,21 @@ export default function Page() {
               <label htmlFor="comp">Components / architecture — optional</label>
               <textarea id="comp" value={components} onChange={(e) => setComponents(e.target.value)} placeholder={"- AI Agent (GPT-4o)\n- Fine-tuned ranking model\n- Email integration"} />
             </div>
+            <div className="field">
+              <label htmlFor="role">Client&apos;s role for this system</label>
+              <select id="role" value={role} onChange={(e) => setRole(e.target.value)}>
+                {ROLES.map((r) => (
+                  <option key={r} value={r}>
+                    {r === "unknown" ? "Infer from the description" : r}
+                  </option>
+                ))}
+              </select>
+              <p className="hint">
+                Provider = built it, or supplies it under their own name (Art. 3(3)).
+                Deployer = uses it in their own operations (Art. 3(4)). Setting this
+                beats inference — a deployer owes no CE marking.
+              </p>
+            </div>
 
             <button className="btn-primary" onClick={classify} disabled={loading}>
               {loading ? "Classifying…" : "Classify system"}
@@ -182,7 +222,16 @@ export default function Page() {
                     </div>
                   </div>
                   <div className="vbody">
-                    <div className="kv"><b>Organisation role:</b> {a.organisation_role} &nbsp;·&nbsp; <b>Application date:</b> {a.application_date}</div>
+                    <div className="kv">
+                      <b>Role(s):</b> {(a.roles?.length ? a.roles : [a.organisation_role]).join(" + ")}
+                      &nbsp;·&nbsp; <b>Application date:</b> {a.application_date}
+                    </div>
+                    {a.role_basis?.detail && (
+                      <div className="kv role-basis">
+                        <b>Role derived from:</b> {a.role_basis.detail}
+                        {a.role_basis.articles?.length > 0 && ` (${a.role_basis.articles.join(", ")})`}
+                      </div>
+                    )}
 
                     <div className="mrow-title">Classification matrix</div>
                     <table className="matrix">
@@ -200,6 +249,9 @@ export default function Page() {
                                   {c.sources.map((s, si) => (
                                     <div className="srcq" key={si}>
                                       <span className="srcref">{s.ref}</span>
+                                      {s.kind === "recital" && (
+                                        <span className="recital">recital — non-binding, interpretive only</span>
+                                      )}
                                       <q>{s.quote}</q>
                                       <a href={s.url} target="_blank" rel="noreferrer">official text ↗</a>
                                     </div>
@@ -233,23 +285,37 @@ export default function Page() {
                     {a.obligations.length > 0 && (
                       <>
                         <div className="mrow-title">Potential obligations &amp; gaps</div>
-                        <table className="obl">
-                          <thead><tr>
-                            <th>Obligation</th><th>Deadline</th><th>Gap check</th>
-                            <th>Assessment</th><th>Status</th>
-                          </tr></thead>
-                          <tbody>
-                            {a.obligations.map((o, k) => (
-                              <tr key={k}>
-                                <td>{o.obligation}</td>
-                                <td className="deadline">{o.deadline}</td>
-                                <td>{o.gap_question}</td>
-                                <td>{o.reasoning}</td>
-                                <td className={`status ${o.status}`}>{OBL_STATUS[o.status] ?? "confirm"}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                        {(a.roles?.length ? a.roles : ["unknown"])[0] === "unknown" && (
+                          <div className="miss-note">
+                            <b>Role not established.</b> Both the provider and the deployer
+                            list are shown — they are <b>not cumulative</b>. Set the role
+                            above and re-classify: a deployer owes no conformity assessment
+                            or CE marking.
+                          </div>
+                        )}
+                        {byRole(a.obligations).map(([r, rows]) => (
+                          <div key={r}>
+                            <div className="role-heading">{ROLE_HEADING[r] ?? r}</div>
+                            <table className="obl">
+                              <thead><tr>
+                                <th>Obligation</th><th>Article</th><th>Deadline</th>
+                                <th>Gap check</th><th>Assessment</th><th>Status</th>
+                              </tr></thead>
+                              <tbody>
+                                {rows.map((o, k) => (
+                                  <tr key={k}>
+                                    <td>{o.obligation}</td>
+                                    <td className="arts">{o.article}</td>
+                                    <td className="deadline">{o.deadline}</td>
+                                    <td>{o.gap_question}</td>
+                                    <td>{o.reasoning}</td>
+                                    <td className={`status ${o.status}`}>{OBL_STATUS[o.status] ?? "confirm"}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ))}
                       </>
                     )}
                   </div>

@@ -3,7 +3,6 @@ chroma/
 data/*.pdf
 data/*.txt
 !data/eu_ai_act.txt
-.streamlit/secrets.toml
 reports/*.pdf
 __pycache__/
 *.pyc
@@ -11,3 +10,4 @@ __pycache__/
 venv/
 .DS_Store
 .claude/
+web/tsconfig.tsbuildinfo

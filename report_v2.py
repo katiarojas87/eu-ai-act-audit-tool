@@ -30,6 +30,7 @@ LINE = colors.HexColor("#D8D5CC")
 TIER_COLOR = {
     "PROHIBITED": colors.HexColor("#B0203C"), "ANNEX_I": AMBER, "ANNEX_III": AMBER,
     "LIMITED": BLUE, "MINIMAL": colors.HexColor("#2E7D46"), "NOT_AI": MUTE,
+    "UNDETERMINED": MUTE,
 }
 STATUS_COLOR = {"definitive": NAVY, "conditional": AMBER, "unresolved": colors.HexColor("#B0203C")}
 OBL_STATUS_LABEL = {"likely_gap": "Likely gap", "likely_in_place": "Likely in place",
@@ -79,16 +80,36 @@ def _table(rows, widths, header_bg=NAVY, status_col=None):
 def _recommended_actions(a: Assessment) -> list[str]:
     acts = []
     if a.tier == "PROHIBITED":
-        acts.append("Cease use of this system immediately and seek legal counsel — "
-                    "it matches an Article 5 prohibition.")
+        if a.prohibited_practice.status == "conditional":
+            acts.append("Suspend use pending legal review — the system matches an "
+                        "Article 5 prohibition, but a statutory exception may apply: "
+                        f"{a.prohibited_practice.detail} Confirm with counsel before "
+                        "either continuing or shutting down.")
+        else:
+            acts.append("Cease use of this system immediately and seek legal counsel — "
+                        "it matches an Article 5 prohibition.")
+    if a.tier == "UNDETERMINED":
+        acts.append("Establish first whether this is an AI system within Art. 3(1); "
+                    "no reliable classification is possible until that is settled.")
+    if a.high_risk.result == "ANNEX_III_EXEMPT":
+        acts.append("Document the Art. 6(3) assessment before placing the system on the "
+                    "market (Art. 6(4)) and register it under Art. 49(2). The derogation "
+                    "fails if the system profiles natural persons — verify this.")
     if a.tier in ("ANNEX_I", "ANNEX_III"):
-        acts += [
-            f"Begin Annex IV technical documentation and data-governance / bias review now "
-            f"(deadline {a.application_date}).",
-            "Design effective human oversight and a post-market monitoring plan.",
-            "Plan the conformity assessment, CE marking and EU-database registration.",
-            "Conduct a Fundamental Rights Impact Assessment (FRIA) if a deployer of essential services.",
-        ]
+        if "provider" in a.roles or a.roles == ["unknown"]:
+            acts += [
+                f"Begin Annex IV technical documentation and data-governance / bias "
+                f"review now (deadline {a.application_date}).",
+                "Design effective human oversight and a post-market monitoring plan.",
+                "Plan the conformity assessment, CE marking and EU-database registration.",
+            ]
+        if "deployer" in a.roles or a.roles == ["unknown"]:
+            acts += [
+                "Assign human oversight to named, trained staff and confirm you can "
+                "retain the system's logs for at least six months (Art. 26).",
+                "If the system is used at the workplace, inform workers' representatives "
+                "before it goes live (Art. 26(7)).",
+            ]
     if a.transparency.result == "Yes":
         acts.append("Add AI disclosure / synthetic-content labelling before 2 August 2026.")
     if a.is_gpai:
@@ -147,7 +168,9 @@ def generate_report(client_name: str, assessments: list[Assessment],
                            f"{'  ·  + GPAI provider' if a.is_gpai else ''}", BODY))
 
         S.append(Paragraph("System &amp; organisation profile", H2))
-        prof = [["Organisation role", a.organisation_role],
+        prof = [["Role(s) in the value chain", " + ".join(a.roles) or a.organisation_role],
+                ["Role derived from",
+                 Paragraph((a.role_basis.detail if a.role_basis else "—"), CELL)],
                 ["Application date", a.application_date],
                 ["Confidence", a.confidence],
                 ["Human review required", "Yes" if a.human_review_required else "No"]]
@@ -172,29 +195,52 @@ def generate_report(client_name: str, assessments: list[Assessment],
 
         if a.obligations:
             S.append(Paragraph("Potential obligations &amp; gaps", H2))
-            orows = [["Obligation", "Deadline", "Assessment", "Status"]]
-            for o in a.obligations:
-                orows.append([Paragraph(o.obligation, CELL),
-                              Paragraph(o.deadline, CELL),
-                              Paragraph(o.reasoning or o.gap_question, CELL),
-                              OBL_STATUS_LABEL.get(o.status, "Confirm")])
-            ot = Table(orows, colWidths=[4.6 * cm, 3.0 * cm, 6.6 * cm, 2.8 * cm])
-            style = [
-                ("BACKGROUND", (0, 0), (-1, 0), BLUE),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, -1), 8),
-                ("GRID", (0, 0), (-1, -1), 0.4, LINE),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("LEFTPADDING", (0, 0), (-1, -1), 6), ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F5F3EE")]),
-            ]
-            for ri, o in enumerate(a.obligations, start=1):
-                style.append(("TEXTCOLOR", (3, ri), (3, ri),
-                              OBL_STATUS_COLOR.get(o.status, MUTE)))
-            ot.setStyle(TableStyle(style))
-            S.append(ot)
+            if a.roles == ["unknown"]:
+                S.append(Paragraph(
+                    "<b>Role not established.</b> Both the provider and the deployer "
+                    "list are shown below. They are not cumulative — confirm the "
+                    "client's role and drop the list that does not apply. A deployer "
+                    "does not owe conformity assessment or CE marking.", SMALL))
+                S.append(Spacer(1, 4))
+
+            # One table per role, so nobody reads the manufacturer's duties as
+            # their own.
+            for r in sorted({o.role for o in a.obligations},
+                            key=lambda x: (x == "all", x)):
+                rows = [o for o in a.obligations if o.role == r]
+                heading = ("Applies to everyone in scope" if r == "all"
+                           else f"As {r}")
+                S.append(Spacer(1, 6))
+                S.append(Paragraph(f"<b>{heading}</b>", BODY))
+                S.append(Spacer(1, 3))
+                orows = [["Obligation", "Article", "Deadline", "Assessment", "Status"]]
+                for o in rows:
+                    orows.append([Paragraph(o.obligation, CELL),
+                                  Paragraph(o.article, CELL),
+                                  Paragraph(o.deadline, CELL),
+                                  Paragraph(o.reasoning or o.gap_question, CELL),
+                                  OBL_STATUS_LABEL.get(o.status, "Confirm")])
+                ot = Table(orows, colWidths=[4.4 * cm, 1.9 * cm, 2.6 * cm,
+                                             5.4 * cm, 2.7 * cm])
+                style = [
+                    ("BACKGROUND", (0, 0), (-1, 0), BLUE),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 8),
+                    ("GRID", (0, 0), (-1, -1), 0.4, LINE),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1),
+                     [colors.white, colors.HexColor("#F5F3EE")]),
+                ]
+                for ri, o in enumerate(rows, start=1):
+                    style.append(("TEXTCOLOR", (4, ri), (4, ri),
+                                  OBL_STATUS_COLOR.get(o.status, MUTE)))
+                ot.setStyle(TableStyle(style))
+                S.append(ot)
 
         S.append(Paragraph("Missing evidence", H2))
         if a.missing_information:
@@ -218,7 +264,14 @@ def generate_report(client_name: str, assessments: list[Assessment],
                 if s.ref in seen:
                     continue
                 seen.add(s.ref)
-                S.append(Paragraph(f"<b>{s.ref}</b> — <i>“{s.quote}”</i>", CELL))
+                # A recital is an interpretive aid, not the rule — say so, in red,
+                # rather than presenting it as the binding provision.
+                if s.kind == "recital":
+                    tag = (f" <font color='{colors.HexColor('#B0203C').hexval()}'>"
+                           "[recital — non-binding, interpretive only]</font>")
+                else:
+                    tag = ""
+                S.append(Paragraph(f"<b>{s.ref}</b>{tag} — <i>“{s.quote}”</i>", CELL))
                 S.append(Paragraph(f"{s.location} · {s.url}", SMALL))
                 S.append(Spacer(1, 4))
         if not seen:

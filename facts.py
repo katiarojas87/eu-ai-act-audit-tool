@@ -35,18 +35,86 @@ Rules:
   "uses_api" if they only call one via API; "none" otherwise.
 - emotion_context: "workplace_education" only if emotion recognition is used in a
   workplace or educational setting.
+- ARTICLE 5 ELEMENTS AND EXCEPTIONS — almost no prohibition is absolute. When you
+  set a prohibition trigger to true, also answer its qualifiers if the
+  description allows; leaving them null is fine and yields "prohibited unless…":
+    causes_significant_harm — does the manipulation/exploitation cause, or is it
+      likely to cause, SIGNIFICANT harm? Required for both 5(1)(a) and 5(1)(b).
+    social_scoring_detrimental_treatment — does the score actually lead to
+      detrimental treatment that is out of context, unjustified or
+      disproportionate? Required for 5(1)(c).
+    predictive_policing_supports_human_assessment — true if it merely supports a
+      human assessment already based on objective, verifiable facts linked to a
+      criminal activity (this takes it OUT of 5(1)(d)).
+    emotion_medical_or_safety_purpose — true if the emotion system is intended
+      for medical or safety reasons (takes it OUT of 5(1)(f)).
+    biometric_lawful_dataset_filtering — true if it only labels/filters a
+      lawfully acquired biometric dataset, or categorises biometric data for law
+      enforcement (takes it OUT of 5(1)(g)).
+    rbi_permitted_objective — for real-time remote biometric identification, one
+      of "victim_search", "imminent_threat", "serious_offence" if the description
+      names such a purpose, else "none".
+    rbi_prior_authorisation — true only if the description says each use is
+      authorised in advance by a judicial or independent authority.
+- subliminal_or_manipulative (5(1)(a)) and exploits_vulnerabilities (5(1)(b)) are
+  SEPARATE prohibitions — set whichever the description supports.
+- ROLE FACTS — do NOT try to decide whether they are a "provider" or "deployer";
+  that is a legal conclusion the rule engine draws. Just answer what they did:
+    developed_or_commissioned  — did they build it, or have it built for them?
+    supplied_under_own_name    — do they offer it to others under their own name
+                                 or trademark? (Selling, licensing, or making it
+                                 available — free or paid.)
+    uses_under_own_authority   — do they use it in their own operations?
+    rebranded_or_modified      — did they put their name on a bought system,
+                                 substantially modify it, or change what it is
+                                 used for? (Fine-tuning a vendor model on their
+                                 own data counts.)
+    imports_from_third_country — do they bring a non-EU company's system into
+                                 the EU market?
+    makes_available_on_market  — do they resell or distribute someone else's
+                                 system without being its provider or importer?
+    established_outside_eu     — is the organisation itself outside the EU?
+  Leave organisation_role as "unknown" — a human sets it when they know it.
+- public_body_or_public_service: true if the organisation is a public authority
+  or a private entity delivering a public service (schools, hospitals, utilities,
+  social services). Drives the Art. 27 FRIA duty.
+- sectoral_regime: "financial_services" if they are a bank, insurer or other
+  regulated financial institution; "medical_devices" if under the MDR/IVDR;
+  "other_sectoral" for another EU quality-system regime; else "none".
+- profiling: true if the system evaluates personal aspects of natural persons
+  (performance, economic situation, health, preferences, behaviour, location).
+  This is decisive for Art. 6(3), so answer it whenever the description allows.
+- art_6_3_ground: leave "none" unless the description makes clear the system does
+  no more than one of: "narrow_procedural_task" (a narrow procedural step),
+  "improves_human_output" (polishes work a human already completed),
+  "detects_patterns" (flags patterns/deviations without replacing the human
+  assessment), "preparatory_task" (prepares an assessment someone else makes).
+  A system that scores, ranks, filters or decides about people is NOT covered by
+  any of these — leave "none".
 
 Reply with ONLY a JSON object matching these keys (omit a key to leave it null/default):
-is_ai_system, purpose, sector, affected_persons, organisation_role,
-high_risk_domains, interacts_with_people, generates_synthetic_content, profiling,
-emotion_recognition, emotion_context, biometric_categorisation_sensitive,
-realtime_remote_biometric_id_public_le, social_scoring, manipulative_or_exploitative,
-predictive_policing_profiling_only, untargeted_facial_scraping,
-safety_component_regulated_product, gpai_relationship, gpai_systemic_risk,
-human_oversight."""
+is_ai_system, purpose, sector, affected_persons, high_risk_domains,
+developed_or_commissioned, supplied_under_own_name, uses_under_own_authority,
+rebranded_or_modified, imports_from_third_country, makes_available_on_market,
+established_outside_eu, public_body_or_public_service, sectoral_regime,
+interacts_with_people, generates_synthetic_content, profiling,
+emotion_recognition, emotion_context, emotion_medical_or_safety_purpose,
+biometric_categorisation_sensitive, biometric_lawful_dataset_filtering,
+realtime_remote_biometric_id_public_le, rbi_permitted_objective,
+rbi_prior_authorisation, social_scoring, social_scoring_detrimental_treatment,
+subliminal_or_manipulative, exploits_vulnerabilities, causes_significant_harm,
+predictive_policing_profiling_only, predictive_policing_supports_human_assessment,
+untargeted_facial_scraping, safety_component_regulated_product, art_6_3_ground,
+gpai_relationship, gpai_systemic_risk, human_oversight."""
 
 
-def extract_facts(name: str, description: str, components: str = "") -> Facts:
+def extract_facts(name: str, description: str, components: str = "",
+                  organisation_role: str = "unknown") -> Facts:
+    """Extract Facts from a description.
+
+    `organisation_role` is the consultant's override: when they know the client's
+    role from the conversation, it beats anything inferred from the text.
+    """
     passages = retrieve(f"{name}. {description} {components}", k=config.TOP_K)
     context = "\n\n".join(f"[{p['source']}]\n{p['text']}" for p in passages)
     user = (f"LEGAL CONTEXT (for grounding definitions only):\n{context}\n\n"
@@ -60,6 +128,8 @@ def extract_facts(name: str, description: str, components: str = "") -> Facts:
     text = next((b.text for b in resp.content if b.type == "text"), "")
     start, end = text.find("{"), text.rfind("}")
     data = json.loads(text[start:end + 1]) if start != -1 else {}
+    if organisation_role and organisation_role != "unknown":
+        data["organisation_role"] = organisation_role
     return Facts.model_validate(data)
 
 

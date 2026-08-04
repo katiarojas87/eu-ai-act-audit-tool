@@ -1,12 +1,11 @@
-# EU AI Act audit tool — Streamlit app with full RAG (ChromaDB + local e5 embeddings).
+# EU AI Act audit tool — FastAPI backend with full RAG (ChromaDB + local e5
+# embeddings). The UI is the Next.js app in web/, deployed separately.
 # Builds the vector index at image-build time so cold starts are fast.
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    HF_HOME=/app/.hfcache \
-    STREAMLIT_SERVER_HEADLESS=true \
-    STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+    HF_HOME=/app/.hfcache
 
 WORKDIR /app
 

@@ -2,7 +2,7 @@
 chroma/
 .hfcache/
 
-# Not needed for the Streamlit image
+# Not needed in the backend image
 web/
 node_modules/
 .venv/
@@ -14,7 +14,6 @@ reports/*.pdf
 # Secrets & local config — never bake into the image
 .env
 .env.local
-.streamlit/secrets.toml
 .claude/
 
 # Cruft

@@ -82,6 +82,218 @@ def test_credit_scoring_annex_iii_point5():
     assert any("Annex III(5)(b)" in art for art in a.high_risk.articles)
 
 
+# --- Article 6(3) derogation --------------------------------------------------
+def test_art_6_3_takes_annex_iii_system_out_of_high_risk():
+    f = Facts(is_ai_system=True, high_risk_domains=["employment"],
+              art_6_3_ground="narrow_procedural_task", profiling=False,
+              organisation_role="provider")
+    a = classify(f, "CV spell-checker")
+    assert a.high_risk.result == "ANNEX_III_EXEMPT"
+    assert a.tier != "ANNEX_III"
+    assert "Art. 6(3)" in a.high_risk.articles
+
+
+def test_profiling_defeats_the_art_6_3_derogation():
+    f = Facts(is_ai_system=True, high_risk_domains=["employment"],
+              art_6_3_ground="narrow_procedural_task", profiling=True)
+    a = classify(f, "Candidate ranker")
+    assert a.tier == "ANNEX_III"
+    assert a.high_risk.result == "ANNEX_III"
+    assert "profiling" in a.high_risk.detail
+
+
+def test_art_6_3_is_conditional_while_profiling_unknown():
+    f = Facts(is_ai_system=True, high_risk_domains=["credit"],
+              art_6_3_ground="preparatory_task", profiling=None)
+    a = classify(f, "Pre-screener")
+    assert a.high_risk.status == "conditional"
+    assert a.human_review_required is True
+    assert any("profil" in m.lower() for m in a.missing_information)
+
+
+def test_art_6_3_exempt_still_carries_documentation_duties():
+    f = Facts(is_ai_system=True, high_risk_domains=["education"],
+              art_6_3_ground="improves_human_output", profiling=False)
+    obligations = [o.obligation for o in classify(f).obligations]
+    assert any("Art. 6(3)" in o for o in obligations)
+    assert any("Register" in o for o in obligations)
+
+
+def test_derogation_not_applied_unless_a_ground_is_claimed():
+    f = Facts(is_ai_system=True, high_risk_domains=["employment"], profiling=False)
+    assert classify(f).tier == "ANNEX_III"   # fails safe
+
+
+# --- unknown / conditional handling -------------------------------------------
+def test_unknown_ai_system_is_undetermined_not_minimal():
+    a = classify(Facts(), "Mystery")
+    assert a.tier == "UNDETERMINED"
+    assert a.confidence == "low"
+    assert a.human_review_required is True
+
+
+def test_emotion_recognition_ban_is_conditional_on_the_exception():
+    f = Facts(is_ai_system=True, emotion_recognition=True,
+              emotion_context="workplace_education")
+    a = classify(f, "Mood Monitor")
+    assert a.tier == "PROHIBITED"
+    assert a.prohibited_practice.status == "conditional"
+    assert "medical" in a.prohibited_practice.detail
+
+
+def test_irrelevant_prohibitions_do_not_block_a_clean_result():
+    """A spam filter should not sit forever at 'cannot rule out biometric scraping'."""
+    f = Facts(is_ai_system=True, interacts_with_people=False,
+              generates_synthetic_content=False, safety_component_regulated_product=False,
+              manipulative_or_exploitative=False, social_scoring=False,
+              organisation_role="deployer")
+    a = classify(f, "Spam Filter")
+    assert a.prohibited_practice.result == "No"
+    assert a.confidence == "high"
+    assert a.human_review_required is False
+
+
+def test_biometric_context_reopens_the_gated_prohibitions():
+    f = Facts(is_ai_system=True, high_risk_domains=["biometrics"],
+              manipulative_or_exploitative=False, social_scoring=False)
+    a = classify(f, "Face ID")
+    assert a.prohibited_practice.result == "Possible"
+    assert any("5(1)" in art for art in a.prohibited_practice.articles)
+
+
+def test_confidence_discriminates_across_inputs():
+    """A confidence signal that is always the same value carries no information."""
+    clean = Facts(is_ai_system=True, interacts_with_people=False,
+                  generates_synthetic_content=False, safety_component_regulated_product=False,
+                  manipulative_or_exploitative=False, social_scoring=False,
+                  organisation_role="provider")
+    assert classify(clean).confidence == "high"
+    assert classify(Facts()).confidence == "low"
+
+
+# --- role derivation and role-split obligations -------------------------------
+def _hr(**kw):
+    base = dict(is_ai_system=True, high_risk_domains=["employment"])
+    base.update(kw)
+    return Facts(**base)
+
+
+def _obligations(a, role=None):
+    return [o.obligation for o in a.obligations if role is None or o.role == role]
+
+
+def test_deployer_is_never_told_to_ce_mark():
+    """A deployer cannot lawfully CE-mark a system it did not build."""
+    a = classify(_hr(developed_or_commissioned=False, uses_under_own_authority=True))
+    assert a.roles == ["deployer"]
+    joined = " ".join(_obligations(a))
+    for provider_only in ("CE marking", "Conformity assessment",
+                          "EU declaration of conformity", "Quality management system"):
+        assert provider_only not in joined, f"deployer was told to: {provider_only}"
+
+
+def test_deployer_gets_article_26_duties():
+    a = classify(_hr(developed_or_commissioned=False, uses_under_own_authority=True))
+    arts = {o.article for o in a.obligations}
+    assert {"Art. 26(1)", "Art. 26(2)", "Art. 26(6)", "Art. 26(7)"} <= arts
+
+
+def test_provider_gets_the_full_article_16_chain():
+    a = classify(_hr(developed_or_commissioned=True, supplied_under_own_name=True))
+    assert a.roles == ["provider"]
+    arts = {o.article for o in a.obligations}
+    assert {"Art. 9", "Art. 11", "Art. 17", "Art. 43", "Art. 47", "Art. 48"} <= arts
+    assert not any(o.article.startswith("Art. 26") for o in a.obligations)
+
+
+def test_in_house_build_is_provider_and_deployer():
+    a = classify(_hr(developed_or_commissioned=True, supplied_under_own_name=True,
+                     uses_under_own_authority=True))
+    assert set(a.roles) == {"provider", "deployer"}
+    assert _obligations(a, "provider") and _obligations(a, "deployer")
+
+
+def test_art_25_escalates_a_modifier_to_provider():
+    """Fine-tuning a bought model moves the whole provider burden onto you."""
+    a = classify(_hr(developed_or_commissioned=False, uses_under_own_authority=True,
+                     rebranded_or_modified=True))
+    assert "provider" in a.roles
+    assert "Art. 25(1)" in a.role_basis.articles
+    assert any("CE marking" in o for o in _obligations(a, "provider"))
+
+
+def test_unknown_role_shows_both_lists_labelled():
+    a = classify(_hr())
+    assert a.roles == ["unknown"]
+    assert _obligations(a, "provider") and _obligations(a, "deployer")
+    assert any("role" in m.lower() for m in a.missing_information)
+
+
+def test_consultant_override_beats_inference():
+    a = classify(_hr(developed_or_commissioned=True, supplied_under_own_name=True,
+                     organisation_role="deployer"))
+    assert a.roles == ["deployer"]
+    assert "CE marking" not in " ".join(_obligations(a))
+
+
+def test_ai_literacy_applies_to_everyone_at_every_tier():
+    for f in (_hr(uses_under_own_authority=True),
+              Facts(is_ai_system=True, interacts_with_people=True,
+                    uses_under_own_authority=True),
+              Facts(is_ai_system=True, uses_under_own_authority=True)):
+        assert "Art. 4" in {o.article for o in classify(f).obligations}
+
+
+def test_fria_only_where_article_27_applies():
+    # credit deployer → FRIA owed outright
+    credit = classify(Facts(is_ai_system=True, high_risk_domains=["credit"],
+                            uses_under_own_authority=True))
+    fria = [o for o in credit.obligations if o.article == "Art. 27"]
+    assert fria and "only if" not in fria[0].obligation
+
+    # ordinary private employer, status unknown → conditional, not asserted
+    empl = classify(_hr(uses_under_own_authority=True))
+    fria = [o for o in empl.obligations if o.article == "Art. 27"]
+    assert fria and "only if" in fria[0].obligation
+
+
+def test_article_17_4_carve_out_for_financial_institutions():
+    a = classify(Facts(is_ai_system=True, high_risk_domains=["credit"],
+                       developed_or_commissioned=True, supplied_under_own_name=True,
+                       sectoral_regime="financial_services"))
+    qms = [o for o in a.obligations if o.article == "Art. 17(4)"]
+    assert qms, "financial institution did not get the Art. 17(4) carve-out"
+    assert "(g)" in qms[0].reasoning and "(h)" in qms[0].reasoning
+
+
+def test_non_eu_provider_needs_an_authorised_representative():
+    a = classify(_hr(developed_or_commissioned=True, supplied_under_own_name=True,
+                     established_outside_eu=True))
+    assert "Art. 22" in {o.article for o in a.obligations}
+
+
+def test_every_obligation_names_a_role_and_an_article():
+    a = classify(_hr(developed_or_commissioned=True, supplied_under_own_name=True,
+                     uses_under_own_authority=True))
+    for o in a.obligations:
+        assert o.role, f"{o.obligation} has no role"
+        assert o.article, f"{o.obligation} has no article"
+
+
+def test_role_basis_is_cited():
+    a = classify(_hr(uses_under_own_authority=True))
+    assert a.role_basis.articles
+    assert a.role_basis.sources, "role derivation has no verbatim source"
+
+
+# --- provenance ---------------------------------------------------------------
+def test_every_source_quote_is_binding_text():
+    a = classify(Facts(is_ai_system=True, high_risk_domains=["employment"]))
+    for c in (a.is_ai_system, a.prohibited_practice, a.high_risk, a.transparency, a.gpai):
+        for s in c.sources:
+            assert s.kind == "operative", f"{s.ref} quoted a non-binding recital"
+
+
 def test_provenance_present_on_every_dimension():
     a = classify(Facts(is_ai_system=True, high_risk_domains=["education"]))
     for c in (a.is_ai_system, a.prohibited_practice, a.high_risk,
@@ -89,3 +301,177 @@ def test_provenance_present_on_every_dimension():
         assert c.articles           # cites something
         assert c.trigger            # names the triggering fact
         assert c.status in ("definitive", "conditional", "unresolved")
+
+
+# --- malformed LLM output must degrade, never crash ---------------------------
+def test_malformed_llm_output_does_not_break_extraction():
+    """A bad field is 'unknown', not a 500. Observed live: human_oversight=false."""
+    payloads = [
+        {"is_ai_system": True, "human_oversight": False},          # bool for an enum
+        {"organisation_role": "user", "gpai_relationship": "maybe"},  # unknown category
+        {"high_risk_domains": "employment"},                        # str instead of list
+        {"high_risk_domains": ["employment", "astrology"]},         # invalid member
+        {"emotion_context": {"nested": 1}, "purpose": 42},          # unhashable / wrong type
+        {"profiling": "true", "interacts_with_people": "unknown"},  # stringly-typed bools
+        {"organisation_role": ["provider"], "high_risk_domains": None},
+    ]
+    for p in payloads:
+        f = Facts.model_validate(p)      # must not raise
+        classify(f, "Robustness")        # and must classify
+
+
+def test_loose_values_are_coerced_to_the_right_meaning():
+    assert Facts.model_validate({"profiling": "true"}).profiling is True
+    assert Facts.model_validate({"profiling": "no"}).profiling is False
+    assert Facts.model_validate({"profiling": "dunno"}).profiling is None
+    assert Facts.model_validate({"human_oversight": False}).human_oversight == "unknown"
+    assert Facts.model_validate(
+        {"high_risk_domains": ["credit", "bogus"]}).high_risk_domains == ["credit"]
+
+
+# --- Article 5 elements and exceptions ----------------------------------------
+def _ai(**kw):
+    return Facts(is_ai_system=True, **kw)
+
+
+def test_art_5_1_f_medical_exception_defeats_the_ban():
+    a = classify(_ai(emotion_recognition=True, emotion_context="workplace_education",
+                     emotion_medical_or_safety_purpose=True))
+    assert a.tier != "PROHIBITED"
+
+
+def test_art_5_1_f_is_definitive_once_the_exception_is_ruled_out():
+    a = classify(_ai(emotion_recognition=True, emotion_context="workplace_education",
+                     emotion_medical_or_safety_purpose=False))
+    assert a.tier == "PROHIBITED"
+    assert a.prohibited_practice.status == "definitive"
+
+
+def test_art_5_1_d_human_assessment_exception():
+    banned = classify(_ai(predictive_policing_profiling_only=True,
+                          high_risk_domains=["law_enforcement"]))
+    assert banned.tier == "PROHIBITED"
+    assert banned.prohibited_practice.status == "conditional"
+
+    ok = classify(_ai(predictive_policing_profiling_only=True,
+                      predictive_policing_supports_human_assessment=True,
+                      high_risk_domains=["law_enforcement"]))
+    assert ok.tier != "PROHIBITED"
+
+
+def test_art_5_1_g_lawful_dataset_filtering_exception():
+    ok = classify(_ai(biometric_categorisation_sensitive=True,
+                      biometric_lawful_dataset_filtering=True,
+                      high_risk_domains=["biometrics"]))
+    assert ok.tier != "PROHIBITED"
+
+
+def test_art_5_1_a_requires_significant_harm():
+    """Manipulation without significant harm is not caught by Art. 5(1)(a)."""
+    no_harm = classify(_ai(subliminal_or_manipulative=True,
+                           causes_significant_harm=False, social_scoring=False))
+    assert no_harm.tier != "PROHIBITED"
+
+    harm = classify(_ai(subliminal_or_manipulative=True, causes_significant_harm=True))
+    assert harm.tier == "PROHIBITED"
+    assert harm.prohibited_practice.status == "definitive"
+
+
+def test_art_5_1_c_requires_detrimental_treatment():
+    ok = classify(_ai(social_scoring=True, social_scoring_detrimental_treatment=False,
+                      subliminal_or_manipulative=False, exploits_vulnerabilities=False))
+    assert ok.tier != "PROHIBITED"
+
+    bad = classify(_ai(social_scoring=True, social_scoring_detrimental_treatment=True))
+    assert bad.tier == "PROHIBITED"
+    assert bad.prohibited_practice.status == "definitive"
+
+
+def test_art_5_1_e_scraping_has_no_exception():
+    a = classify(_ai(untargeted_facial_scraping=True))
+    assert a.tier == "PROHIBITED"
+    assert a.prohibited_practice.status == "definitive"
+
+
+def test_art_5_1_a_and_b_are_separate_prohibitions():
+    a = classify(_ai(exploits_vulnerabilities=True, causes_significant_harm=True,
+                     subliminal_or_manipulative=False))
+    assert "Art. 5(1)(b)" in a.prohibited_practice.articles
+    assert "Art. 5(1)(a)" not in a.prohibited_practice.articles
+
+
+def test_legacy_manipulative_field_still_works():
+    """Older callers set one merged field; it must seed both (a) and (b)."""
+    f = Facts.model_validate({"is_ai_system": True,
+                              "manipulative_or_exploitative": True,
+                              "causes_significant_harm": True})
+    a = classify(f)
+    assert a.tier == "PROHIBITED"
+    assert {"Art. 5(1)(a)", "Art. 5(1)(b)"} <= set(a.prohibited_practice.articles)
+
+
+# --- Article 5(1)(h): real-time remote biometric identification ---------------
+def _rbi(**kw):
+    return _ai(realtime_remote_biometric_id_public_le=True,
+               high_risk_domains=["law_enforcement", "biometrics"],
+               uses_under_own_authority=True, **kw)
+
+
+def test_rbi_without_a_permitted_objective_is_banned():
+    a = classify(_rbi())
+    assert a.tier == "PROHIBITED"
+    assert a.prohibited_practice.status == "definitive"
+
+
+def test_rbi_with_objective_but_unknown_authorisation_is_conditional():
+    a = classify(_rbi(rbi_permitted_objective="imminent_threat"))
+    assert a.tier == "PROHIBITED"
+    assert a.prohibited_practice.status == "conditional"
+    # and the report must not tell them to switch it off outright
+    assert any("Suspend use" in o.obligation for o in a.obligations)
+
+
+def test_rbi_properly_authorised_is_not_prohibited_but_carries_safeguards():
+    a = classify(_rbi(rbi_permitted_objective="victim_search",
+                      rbi_prior_authorisation=True))
+    assert a.tier != "PROHIBITED"
+    arts = {o.article for o in a.obligations}
+    assert {"Art. 5(3)", "Art. 5(2)", "Art. 5(4)", "Art. 5(5)"} <= arts
+
+
+def test_rbi_without_authorisation_is_banned_even_with_a_valid_objective():
+    a = classify(_rbi(rbi_permitted_objective="serious_offence",
+                      rbi_prior_authorisation=False))
+    assert a.tier == "PROHIBITED"
+    assert a.prohibited_practice.status == "definitive"
+
+
+def test_conditional_prohibition_never_says_cease_immediately():
+    """The costliest false positive: shutting down a lawful system."""
+    a = classify(_ai(emotion_recognition=True, emotion_context="workplace_education"))
+    assert a.prohibited_practice.status == "conditional"
+    joined = " ".join(o.obligation for o in a.obligations)
+    assert "Cease use immediately" not in joined
+    assert "Suspend use" in joined
+
+
+def test_exemption_stays_visible_when_other_facts_are_unknown():
+    a = classify(_ai(emotion_recognition=True, emotion_context="workplace_education",
+                     emotion_medical_or_safety_purpose=True,
+                     high_risk_domains=["biometrics"]))
+    assert "medical" in a.prohibited_practice.detail
+
+
+def test_every_article_5_provision_cited_has_a_source():
+    from citations import get_source
+    for f in (_ai(subliminal_or_manipulative=True, causes_significant_harm=True),
+              _ai(exploits_vulnerabilities=True, causes_significant_harm=True),
+              _ai(social_scoring=True, social_scoring_detrimental_treatment=True),
+              _ai(predictive_policing_profiling_only=True),
+              _ai(untargeted_facial_scraping=True),
+              _ai(biometric_categorisation_sensitive=True),
+              _ai(emotion_recognition=True, emotion_context="workplace_education"),
+              _rbi()):
+        a = classify(f)
+        for ref in a.prohibited_practice.articles:
+            assert get_source(ref), f"{ref} has no verbatim source"

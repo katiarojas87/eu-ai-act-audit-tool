@@ -1,21 +1,20 @@
 # Core
 anthropic>=0.49.0
-langgraph>=0.2.0
-langchain-core>=0.3.0
 
 # RAG
 chromadb>=0.5.0
 sentence-transformers>=3.0.0
 
-# UI + reports
-streamlit>=1.40.0
+# Reports
 reportlab>=4.2.0
+
+# API (the Next.js frontend in web/ is the only UI)
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.0.0
 
 # Ingestion / utils
 pypdf>=5.0.0
 requests>=2.32.0
 python-dotenv>=1.0.0
-pydantic>=2.0.0
 pytest>=8.0.0
-fastapi>=0.110.0
-uvicorn[standard]>=0.29.0

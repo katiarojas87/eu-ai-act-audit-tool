@@ -1,10 +1,21 @@
 """Verbatim source citations from the EU AI Act text.
 
 Deterministic (no LLM, no vector search): each provision reference maps to one
-or more anchor phrases; we locate the first match in data/eu_ai_act.txt and
-return the surrounding verbatim sentence, its character offset, and a link to
-the official text on EUR-Lex. If an anchor is not found the provision simply
-carries no quote — we never fabricate one.
+or more anchor phrases; we locate the match in data/eu_ai_act.txt and return the
+surrounding verbatim sentence, its character offset, and a link to the official
+text on EUR-Lex. If an anchor is not found the provision simply carries no quote
+— we never fabricate one.
+
+Two guarantees the report depends on:
+
+1. **Binding text first.** The file holds the recitals (non-binding, interpretive)
+   before the enacting terms. A naive first-match lands in the preamble, so every
+   lookup searches the operative region first and only falls back to a recital
+   when the operative text yields nothing — and then says so (`kind="recital"`).
+2. **No citations to provisions that do not exist.** A reference is structurally
+   validated against the real numbering of the Regulation before we go looking,
+   so a malformed ref (e.g. "Art. 5(1)(i)" — Article 5(1) stops at (h)) returns
+   None instead of the nearest plausible-looking sentence.
 """
 from __future__ import annotations
 
@@ -29,14 +40,19 @@ ANCHORS: dict[str, list[str]] = {
         "subliminal components such as audio, image, video stimuli that persons cannot perceive",
     ],
     "Art. 5(1)(c)": [
+        "(c) the placing on the market, the putting into service or the use of AI systems "
+        "for the evaluation or classification of natural persons",
         "social behaviour or known, inferred or predicted personal or personality characteristics",
     ],
     "Art. 5(1)(d)": [
+        "(d) the placing on the market, the putting into service for this specific purpose, "
+        "or the use of an AI system for making risk assessments of natural persons",
         "committing a criminal offence, based solely on the profiling",
-        "risk of a natural person offending or reoffending not solely on the basis of the profiling",
         "profiling of a natural person or on assessing their personality traits",
     ],
     "Art. 5(1)(e)": [
+        "(e) the placing on the market, the putting into service for this specific purpose, "
+        "or the use of AI systems that create or expand facial recognition databases",
         "facial recognition databases through the untargeted scraping of facial images",
         "untargeted scraping of facial images from the internet or CCTV footage",
     ],
@@ -56,7 +72,12 @@ ANCHORS: dict[str, list[str]] = {
         "safety component of a product, or the AI system is itself a product",
     ],
     "Annex I": [
+        "ANNEX I List of Union harmonisation legislation",
         "intended to be used as a safety component of a product",
+    ],
+    "Annex II": [
+        "ANNEX II List of criminal offences referred to in Article 5(1)",
+        "List of criminal offences referred to in Article 5(1)",
     ],
     "Art. 6(2)": [
         "In addition to the high-risk AI systems referred to in paragraph 1, AI systems referred to in Annex III",
@@ -78,8 +99,10 @@ ANCHORS: dict[str, list[str]] = {
         "recruitment or selection of natural persons",
     ],
     "Annex III(5)(a)": [
-        "essential public assistance benefits and services",
+        "(a) AI systems intended to be used by public authorities or on behalf of public "
+        "authorities to evaluate the eligibility of natural persons",
         "eligibility of natural persons for essential public assistance",
+        "essential public assistance benefits and services",
     ],
     "Annex III(5)(b)": [
         "evaluate the creditworthiness of natural persons or establish their credit score",
@@ -132,8 +155,77 @@ def _law_text() -> str:
         return ""
 
 
+@lru_cache(maxsize=1)
+def _operative_start() -> int:
+    """Offset where the enacting terms begin (everything before it is recitals).
+
+    Article 1 is the first operative provision; the annexes sit after the last
+    article, so [operative_start, end) covers all binding text.
+    """
+    text = _law_text()
+    for marker in ("Article 1 Subject matter", "CHAPTER I GENERAL PROVISIONS\n\n Article 1"):
+        i = text.find(marker)
+        if i != -1:
+            return i
+    return 0  # unknown layout — treat everything as operative rather than hide text
+
+
 def _clean(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
+
+
+# --- reference validity ------------------------------------------------------
+# The real numbering of Regulation (EU) 2024/1689, so we never cite a provision
+# that does not exist. Verified against data/eu_ai_act.txt.
+_ART5_LETTERS = set("abcdefgh")          # Art. 5(1)(a)–(h)
+_ART_PARAGRAPHS = {                       # article -> highest paragraph number
+    3: 68, 5: 8, 6: 8, 26: 12, 27: 5, 50: 7, 51: 3, 53: 6, 55: 4,
+}
+_ANNEX_III_POINTS = {                     # Annex III point -> valid sub-letters
+    1: set("ab"), 2: set("ab"), 3: set("abcd"), 4: set("ab"),
+    5: set("abcde"), 6: set("abcde"), 7: set("abcd"), 8: set("ab"),
+}
+
+_VALID_RE = re.compile(
+    r"^(?:Art\.?\s*(?P<art>\d+)|Annex\s+(?P<annex>[IVX]+))"
+    r"(?:\((?P<p1>\d+)\))?"
+    r"(?:\((?P<p2>[a-z])\))?"
+    r"(?:-\((?P<p3>[a-z])\))?\s*$"
+)
+
+
+def ref_is_valid(ref: str) -> bool:
+    """True if `ref` names a provision that actually exists in the Regulation."""
+    ref = ref.strip()
+    if ref in ANCHORS:            # curated refs are valid by construction
+        return True
+    m = _VALID_RE.match(ref)
+    if not m:
+        return False
+    if m.group("annex"):
+        annex, p1, p2 = m.group("annex"), m.group("p1"), m.group("p2")
+        if annex != "III":
+            return annex in {"I", "II", "IV", "V", "VI", "VII", "VIII",
+                             "IX", "X", "XI", "XII", "XIII"} and not p1
+        if p1 is None:
+            return True
+        pt = int(p1)
+        if pt not in _ANNEX_III_POINTS:
+            return False
+        return p2 is None or p2 in _ANNEX_III_POINTS[pt]
+    art = int(m.group("art"))
+    if art < 1 or art > 113:      # the Regulation has 113 articles
+        return False
+    p1, p2 = m.group("p1"), m.group("p2")
+    if p1 is None:
+        return True
+    if int(p1) < 1 or int(p1) > _ART_PARAGRAPHS.get(art, 20):
+        return False
+    if p2 is None:
+        return True
+    if art == 5:                  # Article 5(1) prohibitions run (a)–(h) only
+        return int(p1) == 1 and p2 in _ART5_LETTERS
+    return True
 
 
 _ART3_RE = re.compile(r"Art\.?\s*3\((\d{1,2})\)")
@@ -163,7 +255,9 @@ def _section_bounds(sec: str) -> tuple[int, int] | None:
     if not entry:
         return None
     marker, span = entry
-    i = text.find(marker)
+    # Search from the enacting terms so a phrase echoed in a recital cannot
+    # anchor the section.
+    i = text.find(marker, _operative_start())
     if i == -1:
         return None
     return i, min(len(text), i + span)
@@ -174,7 +268,10 @@ def _structured(ref: str) -> dict | None:
     m = _REF_RE.match(ref.strip())
     if not m:
         return None
-    bounds = _section_bounds(m.group("sec"))
+    # Prefer the article-heading window: it ends at the next article, so a
+    # paragraph search cannot run past the end of the provision. The curated
+    # spans in SECTION_STARTS are a fallback only.
+    bounds = _provision_window(m.group("sec")) or _section_bounds(m.group("sec"))
     if not bounds:
         return None
     text = _law_text()
@@ -189,8 +286,13 @@ def _structured(ref: str) -> dict | None:
 
     pos = start
     for part in parts:
-        if part.isdigit() and not is_art5:
-            pat = re.compile(rf"(?:^|\n)\s*{part}\.\s")
+        # Digits are paragraph numbers ("2. ") at every article, including 5 —
+        # the letter form is only for lettered points ("(f) ").
+        if part.isdigit():
+            # A paragraph marker usually starts a line, but the official text
+            # also runs them inline after the previous sentence ("… law
+            # enforcement. 2. The use of …"), so accept that form too.
+            pat = re.compile(rf"(?:^|\n|\.\s)\s*{part}\.\s")
         else:
             pat = re.compile(rf"(?:^|\n|\s)\(\s*{re.escape(part)}\s*\)\s")
         hit = pat.search(text, pos, end)
@@ -198,18 +300,23 @@ def _structured(ref: str) -> dict | None:
             return None
         pos = hit.end() - 1
 
-    stop = text.find(";", pos)
-    dot = text.find(". ", pos)
-    cands = [x for x in (stop, dot, pos + 550) if x > pos]
-    quote_end = min(cands) if cands else min(len(text), pos + 550)
+    # Stop at the first sentence break that still yields a readable quote. A bare
+    # article reference otherwise clips to just its heading ("Article 48 CE
+    # marking 1."), which tells the client nothing.
+    min_end = pos + 60
+    stop = text.find(";", min_end)
+    dot = text.find(". ", min_end)
+    cands = [x for x in (stop, dot) if x > pos]
+    quote_end = min(cands) if cands else min(len(text) - 1, pos + 550)
     quote = _clean(text[pos:quote_end + 1])
     if len(quote) < 25:
         return None
     return {
         "ref": ref,
         "quote": quote,
-        "location": f"official text, character offset {pos:,}",
+        "location": f"enacting terms, character offset {pos:,}",
         "url": EURLEX_URL,
+        "kind": "operative",
     }
 
 
@@ -237,48 +344,118 @@ def _article_3_definition(ref: str) -> dict | None:
         "quote": _clean(text[i:end + 1]),
         "location": f"Article 3 definitions, character offset {i:,}",
         "url": EURLEX_URL,
+        "kind": "operative",
+    }
+
+
+@lru_cache(maxsize=128)
+def _provision_window(ref: str) -> tuple[int, int] | None:
+    """The slice of the enacting terms that `ref` lives in.
+
+    Anchoring inside the provision's own region stops a phrase that is echoed
+    elsewhere (a cross-reference in another article, a neighbouring annex point)
+    from being quoted as if it were the provision itself.
+    """
+    text = _law_text()
+    op = _operative_start()
+    m = _VALID_RE.match(ref.strip()) or _REF_RE.match(ref.strip())
+    if not m:
+        return None
+
+    if (m.groupdict().get("annex") or "").strip() == "III" or ref.strip().startswith("Annex III"):
+        start = text.find("ANNEX III High-risk AI systems referred to in Article 6(2)", op)
+        if start == -1:
+            return None
+        end = text.find("ANNEX IV", start)
+        return start, (end if end != -1 else min(len(text), start + 20000))
+
+    art = m.groupdict().get("art") or m.groupdict().get("sec")
+    digits = re.sub(r"\D", "", art or "")
+    if not digits:
+        return None
+    n = int(digits)
+    head = re.compile(rf"\n\s*Article {n}\s+[A-Z]")
+    hit = head.search(text, op)
+    if not hit:
+        return None
+    start = hit.start()
+    nxt = re.compile(rf"\n\s*Article {n + 1}\s+[A-Z]").search(text, start)
+    end = nxt.start() if nxt else min(len(text), start + 20000)
+    return start, end
+
+
+def _quote_around(ref: str, i: int, anchor: str, kind: str) -> dict:
+    """Expand an anchor hit into a readable verbatim window."""
+    text = _law_text()
+    # Back to the previous sentence break (only if close, so we don't drag in
+    # the preceding provision), forward to the next one.
+    start = i
+    window = max(0, i - 120)
+    cut = text.rfind(". ", window, i)
+    if cut != -1:
+        start = cut + 2
+    elif window < i:
+        # no sentence break nearby — keep a little lead-in if it is a heading
+        lead = text.rfind("\n", window, i)
+        start = lead + 1 if lead != -1 else i
+    end = min(len(text), i + len(anchor) + 220)
+    stop = text.find(". ", i + len(anchor), end)
+    if stop != -1:
+        end = stop + 1
+    where = "enacting terms" if kind == "operative" else "recital (non-binding)"
+    return {
+        "ref": ref,
+        "quote": _clean(text[start:end]),
+        "location": f"{where}, character offset {i:,}",
+        "url": EURLEX_URL,
+        "kind": kind,
     }
 
 
 @lru_cache(maxsize=256)
 def get_source(ref: str) -> dict | None:
-    """Return {ref, quote, location, url} for a provision, or None if not found."""
+    """Return {ref, quote, location, url, kind} for a provision, else None.
+
+    Resolution order: binding text (curated anchor, then structural walk), and
+    only then a recital — flagged as such, never passed off as operative text.
+    """
     text = _law_text()
-    if not text:
+    if not text or not ref_is_valid(ref):
         return None
     generic = _article_3_definition(ref)
     if generic:
         return generic
+
     low = text.lower()
-    for anchor in ANCHORS.get(ref, []):
-        i = low.find(anchor.lower())
-        if i == -1:
-            continue
-        # Expand to a readable window: back to the previous sentence break
-        # (only if it is close, so we don't drag in the preceding provision),
-        # forward to the next one.
-        start = i
-        window = max(0, i - 120)
-        cut = text.rfind(". ", window, i)
-        if cut != -1:
-            start = cut + 2
-        elif window < i:
-            # no sentence break nearby — keep a little lead-in if it is a heading
-            lead = text.rfind("\n", window, i)
-            start = lead + 1 if lead != -1 else i
-        end = min(len(text), i + len(anchor) + 220)
-        stop = text.find(". ", i + len(anchor), end)
-        if stop != -1:
-            end = stop + 1
-        quote = _clean(text[start:end])
-        return {
-            "ref": ref,
-            "quote": quote,
-            "location": f"official text, character offset {i:,}",
-            "url": EURLEX_URL,
-        }
-    # No curated anchor matched — try to resolve the reference structurally.
-    return _structured(ref)
+    op = _operative_start()
+    anchors = ANCHORS.get(ref, [])
+
+    # 1. curated anchor inside the provision's own region — the tightest match
+    window = _provision_window(ref)
+    if window:
+        lo, hi = window
+        for anchor in anchors:
+            i = low.find(anchor.lower(), lo, hi)
+            if i != -1:
+                return _quote_around(ref, i, anchor, "operative")
+
+    # 2. resolve the reference structurally (already operative-bounded)
+    structured = _structured(ref)
+    if structured:
+        return structured
+
+    # 3. curated anchor anywhere in the enacting terms
+    for anchor in anchors:
+        i = low.find(anchor.lower(), op)
+        if i != -1:
+            return _quote_around(ref, i, anchor, "operative")
+
+    # 4. last resort: a recital, explicitly labelled as non-binding
+    for anchor in anchors:
+        i = low.find(anchor.lower(), 0, op)
+        if i != -1:
+            return _quote_around(ref, i, anchor, "recital")
+    return None
 
 
 def sources_for(refs: list[str]) -> list[dict]:

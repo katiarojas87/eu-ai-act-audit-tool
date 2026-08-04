@@ -62,12 +62,17 @@ label {
   letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 6px;
 }
 .field { margin-bottom: 15px; }
-input[type="text"], input[type="password"], textarea {
+input[type="text"], input[type="password"], textarea, select {
   width: 100%; font-family: var(--font-sans), sans-serif; font-size: 14px; color: var(--ink);
   background: var(--paper); border: 1px solid var(--line); border-radius: 3px; padding: 10px 12px;
   transition: border-color .15s, box-shadow .15s;
 }
-input:focus, textarea:focus { outline: none; border-color: var(--amber); box-shadow: 0 0 0 3px rgba(184,135,58,.15); }
+select { appearance: none; cursor: pointer; padding-right: 32px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%),
+                    linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+  background-position: calc(100% - 17px) 50%, calc(100% - 12px) 50%;
+  background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--amber); box-shadow: 0 0 0 3px rgba(184,135,58,.15); }
 textarea { resize: vertical; min-height: 84px; line-height: 1.5; }
 
 button { font-family: var(--font-sans), sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; border-radius: 3px; border: 1px solid transparent; padding: 10px 18px; transition: background .15s, opacity .15s; }
@@ -130,6 +135,20 @@ table.matrix, table.obl { width: 100%; border-collapse: collapse; font-size: 12.
 
 .kv { font-size: 12.5px; color: var(--ink-2); margin: 3px 0; }
 .kv b { color: var(--ink); font-weight: 500; }
+.role-basis { font-size: 11.5px; color: var(--ink-3); }
+
+/* One obligations table per role — a deployer must never read the provider's
+   duties as their own. */
+.role-heading {
+  font-family: var(--font-mono), monospace; font-size: 10.5px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink); font-weight: 500;
+  margin: 14px 0 6px; padding-left: 8px; border-left: 2px solid var(--navy);
+}
+/* A recital is an interpretive aid, not the rule. */
+.recital {
+  display: inline-block; font-family: var(--font-mono), monospace; font-size: 9.5px;
+  letter-spacing: .04em; color: var(--prohibited); margin-bottom: 4px;
+}
 .miss { font-size: 12.5px; color: var(--ink-2); margin: 3px 0 3px 14px; }
 .deadline { font-family: var(--font-mono), monospace; font-size: 11px; color: var(--ink-2); white-space: nowrap; }
 
