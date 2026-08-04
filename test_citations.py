@@ -88,3 +88,46 @@ def test_every_provision_the_engine_can_cite_has_a_source():
 def test_quotes_are_substantial_enough_to_read():
     for ref in ALL_REFS:
         assert len(get_source(ref)["quote"]) >= 40, f"{ref} quote is too short"
+
+
+# --- the corpus must be the law currently in force ----------------------------
+def test_corpus_is_the_consolidated_text_not_the_original():
+    """The 2024 text no longer states the law: the Omnibus rewrote Art. 4 and
+    deferred both high-risk deadlines. Quoting the original would put superseded
+    wording in a client report."""
+    from citations import _norm
+    text, _ = _norm()
+    assert "take measures to support the development of AI literacy" in text, \
+        "Art. 4 is the pre-Omnibus wording — re-run `python fetch_law.py`"
+    assert "2 December 2027 as regards AI systems classified as high-risk" in text
+    assert "2 August 2028 as regards AI systems classified as high-risk" in text
+
+
+def test_amendment_inserted_prohibitions_are_citable():
+    """Art. 5(1)(ba) and (bb) were inserted by the Digital Omnibus."""
+    for ref in ("Art. 5(1)(ba)", "Art. 5(1)(bb)"):
+        assert ref_is_valid(ref)
+        s = get_source(ref)
+        assert s and s["kind"] == "operative"
+
+
+def test_application_dates_quote_the_regulation():
+    from rules import DATE_ANNEX_I, DATE_ANNEX_III, date_source
+    a3 = date_source(DATE_ANNEX_III)
+    assert a3 and "2 December 2027" in a3["quote"]
+    a1 = date_source(DATE_ANNEX_I)
+    assert a1 and "2 August 2028" in a1["quote"]
+
+
+def test_matching_is_insensitive_to_source_layout():
+    """Headings sit on their own line in the consolidated edition and inline in
+    the original; an anchor must not care which."""
+    for ref in ("Art. 3(1)", "Art. 3(3)", "Annex I", "Art. 4", "Art. 113"):
+        assert get_source(ref), f"{ref} failed to resolve"
+
+
+def test_consolidation_markers_are_stripped_from_quotes():
+    """EUR-Lex marks amended passages with ▼B / ▼M1 / ►M1 … ◄."""
+    for ref in ALL_REFS:
+        quote = get_source(ref)["quote"]
+        assert not any(m in quote for m in "▼►◄"), f"{ref} carries editorial marks"

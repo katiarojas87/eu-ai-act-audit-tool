@@ -18,7 +18,7 @@ from reportlab.platypus import (
 )
 
 import config
-from rules import date_basis
+from rules import date_basis, date_source
 from schema import Assessment
 
 NAVY = colors.HexColor("#1B2A4A")
@@ -281,6 +281,15 @@ def generate_report(client_name: str, assessments: list[Assessment],
 
         S.append(Paragraph("Sources &amp; limitations", H2))
         seen = set()
+        # The deadline is a legal statement too — quote the provision that sets it.
+        if (ds := date_source(a.application_date)):
+            seen.add(ds["ref"])
+            S.append(Paragraph(f"<b>{ds['ref']}</b> (application date) — "
+                               f"<i>“{ds['quote']}”</i>", CELL))
+            basis = date_basis(a.application_date)
+            if basis:
+                S.append(Paragraph(f"{basis[0]} · {basis[1]}", SMALL))
+            S.append(Spacer(1, 4))
         for c in (a.is_ai_system, a.prohibited_practice, a.high_risk, a.transparency, a.gpai):
             for s in c.sources:
                 if s.ref in seen:

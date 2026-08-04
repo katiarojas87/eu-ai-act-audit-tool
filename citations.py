@@ -156,18 +156,65 @@ def _law_text() -> str:
 
 
 @lru_cache(maxsize=1)
+def _norm() -> tuple[str, list[int]]:
+    """The law text with every whitespace run collapsed to one space.
+
+    Returns (normalised_text, offsets) where offsets[i] is the index of
+    normalised_text[i] in the original file, so a match can still be reported at
+    its true position.
+
+    All matching happens on this form. The official text lays provisions out
+    differently between editions — the consolidated version puts headings on
+    their own line ("Article 3\\n\\nDefinitions") where the original runs them
+    together — and an anchor should not care. Without this, switching to the
+    consolidated text silently breaks every heading-based citation.
+    """
+    raw = _law_text()
+    out: list[str] = []
+    offsets: list[int] = []
+    in_space = False
+    for i, ch in enumerate(raw):
+        if ch.isspace():
+            if not in_space:
+                out.append(" ")
+                offsets.append(i)
+                in_space = True
+        else:
+            out.append(ch)
+            offsets.append(i)
+            in_space = False
+    return "".join(out), offsets
+
+
+@lru_cache(maxsize=1)
+def _norm_lower() -> str:
+    return _norm()[0].lower()
+
+
+def _to_source_offset(i: int) -> int:
+    """Map a normalised index back to its position in the original file."""
+    _, offsets = _norm()
+    if not offsets:
+        return i
+    return offsets[min(i, len(offsets) - 1)]
+
+
+@lru_cache(maxsize=1)
 def _operative_start() -> int:
     """Offset where the enacting terms begin (everything before it is recitals).
 
     Article 1 is the first operative provision; the annexes sit after the last
     article, so [operative_start, end) covers all binding text.
     """
-    text = _law_text()
-    for marker in ("Article 1 Subject matter", "CHAPTER I GENERAL PROVISIONS\n\n Article 1"):
+    text, _ = _norm()
+    for marker in ("Article 1 Subject matter", "Article 1 Subject-matter",
+                   "CHAPTER I GENERAL PROVISIONS Article 1"):
         i = text.find(marker)
         if i != -1:
             return i
-    return 0  # unknown layout — treat everything as operative rather than hide text
+    # A consolidated edition drops the recitals entirely, so there is nothing to
+    # skip past. Treat everything as operative rather than hide text.
+    return 0
 
 
 def _clean(s: str) -> str:
@@ -177,7 +224,9 @@ def _clean(s: str) -> str:
 # --- reference validity ------------------------------------------------------
 # The real numbering of Regulation (EU) 2024/1689, so we never cite a provision
 # that does not exist. Verified against data/eu_ai_act.txt.
-_ART5_LETTERS = set("abcdefgh")          # Art. 5(1)(a)–(h)
+# Art. 5(1)(a)–(h), plus (ba) and (bb) inserted by the Digital Omnibus
+# (Regulation (EU) 2026/1744) — intimate imagery and child sexual abuse material.
+_ART5_LETTERS = set("abcdefgh") | {"ba", "bb"}
 _ART_PARAGRAPHS = {                       # article -> highest paragraph number
     3: 68, 5: 8, 6: 8, 26: 12, 27: 5, 50: 7, 51: 3, 53: 6, 55: 4,
 }
@@ -188,9 +237,11 @@ _ANNEX_III_POINTS = {                     # Annex III point -> valid sub-letters
 
 _VALID_RE = re.compile(
     r"^(?:Art\.?\s*(?P<art>\d+)|Annex\s+(?P<annex>[IVX]+))"
-    r"(?:\((?P<p1>\d+)\))?"
-    r"(?:\((?P<p2>[a-z])\))?"
-    r"(?:-\((?P<p3>[a-z])\))?\s*$"
+    # Paragraphs may be inserted as "1a", "1b" by an amending act.
+    r"(?:\((?P<p1>\d+[a-z]?)\))?"
+    # Points likewise: "(a)", and inserted "(ba)", "(bb)".
+    r"(?:\((?P<p2>[a-z]{1,2})\))?"
+    r"(?:-\((?P<p3>[a-z]{1,2})\))?\s*$"
 )
 
 
@@ -219,12 +270,14 @@ def ref_is_valid(ref: str) -> bool:
     p1, p2 = m.group("p1"), m.group("p2")
     if p1 is None:
         return True
-    if int(p1) < 1 or int(p1) > _ART_PARAGRAPHS.get(art, 20):
+    # "1a"/"1b" are paragraphs inserted by an amending act; validate the number.
+    base = int(re.match(r"\d+", p1).group())
+    if base < 1 or base > _ART_PARAGRAPHS.get(art, 20):
         return False
     if p2 is None:
         return True
-    if art == 5:                  # Article 5(1) prohibitions run (a)–(h) only
-        return int(p1) == 1 and p2 in _ART5_LETTERS
+    if art == 5:                  # Article 5(1) prohibitions, incl. inserted (ba)/(bb)
+        return base == 1 and p2 in _ART5_LETTERS
     return True
 
 
@@ -249,7 +302,7 @@ _REF_RE = re.compile(
 
 
 def _section_bounds(sec: str) -> tuple[int, int] | None:
-    text = _law_text()
+    text, _ = _norm()
     key = re.sub(r"Art\.?\s*", "Art. ", sec.strip())
     entry = SECTION_STARTS.get(key)
     if not entry:
@@ -274,7 +327,7 @@ def _structured(ref: str) -> dict | None:
     bounds = _provision_window(m.group("sec")) or _section_bounds(m.group("sec"))
     if not bounds:
         return None
-    text = _law_text()
+    text, _ = _norm()
     start, end = bounds
 
     # Build the markers to walk, in order. For Article 5 the prohibitions sit
@@ -289,12 +342,12 @@ def _structured(ref: str) -> dict | None:
         # Digits are paragraph numbers ("2. ") at every article, including 5 —
         # the letter form is only for lettered points ("(f) ").
         if part.isdigit():
-            # A paragraph marker usually starts a line, but the official text
-            # also runs them inline after the previous sentence ("… law
-            # enforcement. 2. The use of …"), so accept that form too.
-            pat = re.compile(rf"(?:^|\n|\.\s)\s*{part}\.\s")
+            # A paragraph marker may start a line, follow the previous sentence
+            # inline ("… law enforcement. 2. The use of …"), or in the
+            # consolidated edition stand alone as "2." — accept all three.
+            pat = re.compile(rf"(?:^|\s|\.\s)\s*{part}\.\s")
         else:
-            pat = re.compile(rf"(?:^|\n|\s)\(\s*{re.escape(part)}\s*\)\s")
+            pat = re.compile(rf"(?:^|\s)\(\s*{re.escape(part)}\s*\)\s")
         hit = pat.search(text, pos, end)
         if not hit:
             return None
@@ -314,7 +367,7 @@ def _structured(ref: str) -> dict | None:
     return {
         "ref": ref,
         "quote": quote,
-        "location": f"enacting terms, character offset {pos:,}",
+        "location": f"enacting terms, character offset {_to_source_offset(pos):,}",
         "url": EURLEX_URL,
         "kind": "operative",
     }
@@ -325,7 +378,7 @@ def _article_3_definition(ref: str) -> dict | None:
     m = _ART3_RE.fullmatch(ref.strip())
     if not m:
         return None
-    text = _law_text()
+    text, _ = _norm()
     start = text.find("Article 3 Definitions")
     if start == -1:
         return None
@@ -342,7 +395,7 @@ def _article_3_definition(ref: str) -> dict | None:
     return {
         "ref": ref,
         "quote": _clean(text[i:end + 1]),
-        "location": f"Article 3 definitions, character offset {i:,}",
+        "location": f"Article 3 definitions, character offset {_to_source_offset(i):,}",
         "url": EURLEX_URL,
         "kind": "operative",
     }
@@ -356,7 +409,7 @@ def _provision_window(ref: str) -> tuple[int, int] | None:
     elsewhere (a cross-reference in another article, a neighbouring annex point)
     from being quoted as if it were the provision itself.
     """
-    text = _law_text()
+    text, _ = _norm()
     op = _operative_start()
     m = _VALID_RE.match(ref.strip()) or _REF_RE.match(ref.strip())
     if not m:
@@ -364,6 +417,8 @@ def _provision_window(ref: str) -> tuple[int, int] | None:
 
     if (m.groupdict().get("annex") or "").strip() == "III" or ref.strip().startswith("Annex III"):
         start = text.find("ANNEX III High-risk AI systems referred to in Article 6(2)", op)
+        if start == -1:
+            start = text.find("ANNEX III", op)
         if start == -1:
             return None
         end = text.find("ANNEX IV", start)
@@ -374,19 +429,21 @@ def _provision_window(ref: str) -> tuple[int, int] | None:
     if not digits:
         return None
     n = int(digits)
-    head = re.compile(rf"\n\s*Article {n}\s+[A-Z]")
+    # Headings read "Article 9 Risk management system". Require a capital after
+    # the number so "Article 9" inside a cross-reference cannot match.
+    head = re.compile(rf"(?:^|\s)Article {n}\s+[A-Z]")
     hit = head.search(text, op)
     if not hit:
         return None
     start = hit.start()
-    nxt = re.compile(rf"\n\s*Article {n + 1}\s+[A-Z]").search(text, start)
+    nxt = re.compile(rf"(?:^|\s)Article {n + 1}\s+[A-Z]").search(text, start + 1)
     end = nxt.start() if nxt else min(len(text), start + 20000)
     return start, end
 
 
 def _quote_around(ref: str, i: int, anchor: str, kind: str) -> dict:
     """Expand an anchor hit into a readable verbatim window."""
-    text = _law_text()
+    text, _ = _norm()
     # Back to the previous sentence break (only if close, so we don't drag in
     # the preceding provision), forward to the next one.
     start = i
@@ -406,7 +463,7 @@ def _quote_around(ref: str, i: int, anchor: str, kind: str) -> dict:
     return {
         "ref": ref,
         "quote": _clean(text[start:end]),
-        "location": f"{where}, character offset {i:,}",
+        "location": f"{where}, character offset {_to_source_offset(i):,}",
         "url": EURLEX_URL,
         "kind": kind,
     }
@@ -419,14 +476,13 @@ def get_source(ref: str) -> dict | None:
     Resolution order: binding text (curated anchor, then structural walk), and
     only then a recital — flagged as such, never passed off as operative text.
     """
-    text = _law_text()
-    if not text or not ref_is_valid(ref):
+    if not _law_text() or not ref_is_valid(ref):
         return None
     generic = _article_3_definition(ref)
     if generic:
         return generic
 
-    low = text.lower()
+    low = _norm_lower()
     op = _operative_start()
     anchors = ANCHORS.get(ref, [])
 
@@ -456,6 +512,38 @@ def get_source(ref: str) -> dict | None:
         if i != -1:
             return _quote_around(ref, i, anchor, "recital")
     return None
+
+
+def quote_containing(ref: str, phrase: str) -> dict | None:
+    """Quote the clause inside `ref` that contains `phrase`.
+
+    Some provisions carry several independent statements — Art. 113(c) sets two
+    different application dates in two sub-points — and the whole provision is
+    the wrong quote for any one of them. This pins the quote to the clause that
+    actually says the thing being cited.
+    """
+    if not ref_is_valid(ref):
+        return None
+    window = _provision_window(ref)
+    if not window:
+        return None
+    text, _ = _norm()
+    lo, hi = window
+    i = text.lower().find(phrase.lower(), lo, hi)
+    if i == -1:
+        return None
+    # A clause runs between semicolons or sentence ends.
+    start = max(text.rfind("; ", lo, i), text.rfind(". ", lo, i))
+    start = start + 2 if start != -1 else i
+    ends = [e for e in (text.find("; ", i), text.find(". ", i)) if e != -1]
+    end = min(ends) if ends else min(hi, i + 300)
+    return {
+        "ref": ref,
+        "quote": _clean(text[start:end + 1]),
+        "location": f"enacting terms, character offset {_to_source_offset(start):,}",
+        "url": EURLEX_URL,
+        "kind": "operative",
+    }
 
 
 def sources_for(refs: list[str]) -> list[dict]:

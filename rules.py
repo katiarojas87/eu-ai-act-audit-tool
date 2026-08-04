@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import NamedTuple
 
-from citations import sources_for
+from citations import get_source, quote_containing, sources_for
 from schema import Assessment, Conclusion, Facts, Obligation, SourceQuote
 
 # --- application dates -------------------------------------------------------
@@ -22,9 +22,9 @@ from schema import Assessment, Conclusion, Facts, Obligation, SourceQuote
 #   harmonised rules on artificial intelligence (Digital Omnibus on AI),
 #   OJ L, 2026/1744, 24.7.2026. Article 1(40) sets the two dates below.
 #
-# data/eu_ai_act.txt is the ORIGINAL 2024 text, so citations.py cannot resolve
-# the amended dates from it. They therefore carry an explicit external basis
-# instead of a verbatim quote, and the report shows that basis.
+# fetch_law.py now downloads the CONSOLIDATED text, so these dates are quotable
+# verbatim from Art. 113 like any other provision — DATE_ARTICLE points at the
+# provision, and citations.py resolves it.
 OMNIBUS = "Regulation (EU) 2026/1744 (Digital Omnibus on AI), OJ L, 2026/1744, 24.7.2026"
 OMNIBUS_URL = "https://eur-lex.europa.eu/eli/reg/2026/1744/oj/eng"
 AI_ACT_URL = "https://eur-lex.europa.eu/eli/reg/2024/1689/oj/eng"
@@ -50,9 +50,34 @@ DATE_BASIS: dict[str, tuple[str, str]] = {
 }
 
 
+# The provision each date comes from, so the report can quote it verbatim from
+# the consolidated text rather than assert it.
+DATE_ARTICLE: dict[str, str] = {
+    DATE_PROHIBITED: "Art. 113(a)",
+    DATE_AI_LITERACY: "Art. 113(a)",
+    DATE_GPAI: "Art. 113(b)",
+    DATE_TRANSPARENCY: "Art. 113",
+    DATE_ANNEX_III: "Art. 113(c)",
+    DATE_ANNEX_I: "Art. 113(c)",
+}
+
+
 def date_basis(date: str) -> tuple[str, str] | None:
     """The legal basis for an application date, or None if it has none."""
     return DATE_BASIS.get(date)
+
+
+def date_source(date: str) -> dict | None:
+    """The verbatim clause behind an application date, if we can locate it.
+
+    Art. 113(c) sets two dates in two sub-points, so the quote is pinned to the
+    clause naming this particular date rather than the whole provision.
+    """
+    ref = DATE_ARTICLE.get(date)
+    if not ref:
+        return None
+    day = date.split(" (")[0]                 # "2 December 2027 (in force)" -> date
+    return quote_containing(ref, day) or get_source(ref)
 
 # --- prohibited practices (Article 5) ----------------------------------------
 # Almost none of the Article 5 bans is absolute: each has statutory elements

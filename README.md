@@ -159,22 +159,32 @@ it can no longer say "biometrics, but excluded by Annex III(1)(a)".
 
 ## Notes
 
-- **Application dates are sourced.** The original Art. 113 timetable was amended
-  by [Regulation (EU) 2026/1744](https://eur-lex.europa.eu/eli/reg/2026/1744/oj/eng)
-  (Digital Omnibus on AI, OJ L, 2026/1744, 24.7.2026), whose Art. 1(40) defers
-  Annex III high-risk to **2 December 2027** and Annex I to **2 August 2028**.
-  Art. 50 transparency (2 August 2026) and Art. 4 AI literacy (in force) are
-  unchanged. `data/eu_ai_act.txt` is the ORIGINAL 2024 text, so these two dates
-  cannot be quoted verbatim by `citations.py`; they carry an explicit external
-  basis in `rules.py` (`DATE_BASIS`) which the report prints under the
-  application date. Re-verify if the Regulation is amended again.
-- The same amendment **weakened Art. 4**: the duty is to "take measures to
-  support the development of AI literacy", and expressly does not require
-  guaranteeing any specific level for any individual. The obligation text says
-  so — wording it as "ensure staff are trained" would overstate what a client
-  owes. Art. 1(38) also gives providers of generative systems already on the
-  market before 2 August 2026 a four-month transitional period for the Art. 50
-  marking duty; that note rides along with the obligation.
+- **The corpus is the CONSOLIDATED text, not the 2024 original.** `fetch_law.py`
+  discovers the latest consolidated version of Regulation (EU) 2024/1689 from
+  the Publications Office and verifies it before replacing `data/eu_ai_act.txt`;
+  the version fetched is recorded in `data/eu_ai_act.source.json`. This matters:
+  the Digital Omnibus on AI ([Regulation (EU) 2026/1744](https://eur-lex.europa.eu/eli/reg/2026/1744/oj/eng),
+  OJ L, 2026/1744, 24.7.2026) rewrote Article 4 and deferred both high-risk
+  deadlines, so the original text no longer states the law. Re-run
+  `python fetch_law.py && python ingest.py` after any amendment;
+  `--list` shows available versions.
+- **Application dates are quoted, not asserted.** They now resolve verbatim from
+  Art. 113 like any other provision: Annex III high-risk **2 December 2027**,
+  Annex I **2 August 2028** (Art. 113(c)), transparency 2 August 2026, and
+  Chapters I–II (prohibitions, Art. 4) 2 February 2025. The PDF prints the
+  clause behind the deadline.
+- The Omnibus also **weakened Art. 4** — the duty is to "take measures to support
+  the development of AI literacy" and expressly does not require guaranteeing any
+  specific level — and gave providers of generative systems already on the market
+  before 2 August 2026 a four-month transitional period for the Art. 50 marking
+  duty. Both are reflected in the obligation text.
+- **NOT YET MODELLED — two new prohibitions.** The Omnibus inserted
+  **Art. 5(1)(ba)** (AI generating or manipulating realistic intimate or sexually
+  explicit imagery of an identifiable person without their explicit consent) and
+  **Art. 5(1)(bb)** (child sexual abuse material within Directive 2011/93/EU),
+  qualified by new Art. 5(1a)/(1b). They apply from **2 December 2026**. Both are
+  citable but the rule engine does not yet test for them — a generative-AI client
+  will not be warned. This is the highest-priority gap.
 - **Obligations are split by role.** The Act assigns duties by role, so the tool
   derives the role from observable facts (Art. 3(3)–(7)) rather than asking the
   model to apply a legal label, and escalates to provider under Art. 25(1) where
