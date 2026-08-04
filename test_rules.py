@@ -554,3 +554,128 @@ def test_scope_conclusion_is_cited():
         a = classify(f)
         assert a.territorial_scope.articles
         assert a.territorial_scope.sources, "scope conclusion has no verbatim source"
+
+
+# --- Annex III carve-outs (the domains are narrower than their labels) --------
+def _dom(**kw):
+    return Facts(is_ai_system=True, placed_on_eu_market=True, **kw)
+
+
+def test_motor_insurance_is_not_high_risk():
+    """Annex III(5)(c) covers life and health insurance only."""
+    a = classify(_dom(high_risk_domains=["insurance"], insurance_life_or_health=False))
+    assert a.high_risk.result == "No"
+    assert a.tier != "ANNEX_III"
+
+
+def test_life_insurance_is_high_risk():
+    a = classify(_dom(high_risk_domains=["insurance"], insurance_life_or_health=True))
+    assert a.tier == "ANNEX_III"
+
+
+def test_insurance_line_unknown_is_conditional():
+    a = classify(_dom(high_risk_domains=["insurance"]))
+    assert a.tier == "ANNEX_III"
+    assert a.high_risk.status == "conditional"
+
+
+def test_biometric_verification_is_excluded():
+    """A door badge reader confirming a claimed identity — Annex III(1)(a)."""
+    a = classify(_dom(high_risk_domains=["biometrics"], biometric_verification_only=True))
+    assert a.high_risk.result == "No"
+
+
+def test_fraud_detection_is_excluded_from_credit():
+    a = classify(_dom(high_risk_domains=["credit"], credit_fraud_detection_only=True))
+    assert a.high_risk.result == "No"
+
+    scoring = classify(_dom(high_risk_domains=["credit"],
+                            credit_fraud_detection_only=False))
+    assert scoring.tier == "ANNEX_III"
+
+
+def test_carve_out_does_not_swallow_a_second_engaged_domain():
+    a = classify(_dom(high_risk_domains=["insurance", "employment"],
+                      insurance_life_or_health=False))
+    assert a.tier == "ANNEX_III"
+    assert "Annex III(4)" in a.high_risk.articles
+    assert "Annex III(5)(c)" not in a.high_risk.articles
+
+
+def test_carve_outs_still_allow_art_6_3_analysis():
+    a = classify(_dom(high_risk_domains=["credit"], art_6_3_ground="preparatory_task"))
+    assert a.high_risk.status == "conditional"
+
+
+# --- Article 50 exceptions ----------------------------------------------------
+def test_art_50_1_obviousness_exception():
+    obvious = classify(_dom(interacts_with_people=True, ai_interaction_obvious=True))
+    assert "exception applies" in obvious.transparency.detail
+
+    not_obvious = classify(_dom(interacts_with_people=True, ai_interaction_obvious=False,
+                                law_enforcement_authorised_detection=False))
+    assert not_obvious.transparency.result == "Yes"
+    assert "Art. 50(1)" in not_obvious.transparency.articles
+
+
+def test_art_50_2_assistive_editing_exception():
+    a = classify(_dom(generates_synthetic_content=True,
+                      assistive_or_no_substantial_alteration=True))
+    assert "assistive function" in a.transparency.detail
+
+
+def test_art_50_law_enforcement_exception_runs_through():
+    a = classify(_dom(interacts_with_people=True, generates_synthetic_content=False,
+                      law_enforcement_authorised_detection=True))
+    assert "criminal offences" in a.transparency.detail
+
+
+def test_art_50_4_deepfake_disclosure():
+    a = classify(_dom(deepfake_content=True, generates_synthetic_content=True,
+                      assistive_or_no_substantial_alteration=False,
+                      law_enforcement_authorised_detection=False))
+    assert a.transparency.result == "Yes"
+    assert "Art. 50(4)" in a.transparency.articles
+
+
+def test_artistic_work_limits_rather_than_removes_the_duty():
+    a = classify(_dom(deepfake_content=True, generates_synthetic_content=True,
+                      assistive_or_no_substantial_alteration=False,
+                      law_enforcement_authorised_detection=False,
+                      artistic_creative_satirical_work=True))
+    assert a.transparency.result == "Yes"          # still owed
+    assert "does not hamper" in a.transparency.detail   # but limited
+
+
+def test_editorial_review_exempts_published_ai_text():
+    a = classify(_dom(text_published_public_interest=True,
+                      generates_synthetic_content=False,
+                      law_enforcement_authorised_detection=False,
+                      human_editorial_review=True, deepfake_content=False,
+                      interacts_with_people=False))
+    assert "editorial responsibility" in a.transparency.detail
+
+
+def test_deepfake_screening_does_not_hang_a_non_generative_system():
+    """A spam filter must not sit unresolved on deep-fake questions."""
+    a = classify(_dom(interacts_with_people=False, generates_synthetic_content=False,
+                      safety_component_regulated_product=False,
+                      manipulative_or_exploitative=False, social_scoring=False,
+                      organisation_role="deployer"))
+    assert a.transparency.result == "No"
+    assert a.confidence == "high"
+
+
+def test_every_article_50_provision_cited_has_a_source():
+    from citations import get_source
+    for f in (_dom(interacts_with_people=True, ai_interaction_obvious=False,
+                   law_enforcement_authorised_detection=False),
+              _dom(generates_synthetic_content=True,
+                   assistive_or_no_substantial_alteration=False,
+                   law_enforcement_authorised_detection=False),
+              _dom(deepfake_content=True, generates_synthetic_content=True,
+                   assistive_or_no_substantial_alteration=False,
+                   law_enforcement_authorised_detection=False),
+              _dom(emotion_recognition=True, law_enforcement_authorised_detection=False)):
+        for ref in classify(f).transparency.articles:
+            assert get_source(ref), f"{ref} has no verbatim source"

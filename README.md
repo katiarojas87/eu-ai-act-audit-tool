@@ -146,6 +146,16 @@ Run the tests with `pytest` (they need no API key — the rule engine is pure Py
   continues the assessment, and lists the scope question as missing evidence.
   The classification matrix still shows the underlying tier, so you can see what
   the system *would* be if it entered the EU market.
+- **The Annex III domains are narrower than their labels.** `insurance` engages
+  Annex III(5)(c) only for life and health cover; `credit` excludes fraud
+  detection (5(b)); `biometrics` excludes verification whose sole purpose is
+  confirming a claimed identity (1(a)). Without these, motor-insurance pricing
+  and office badge readers come back high-risk.
+- **Article 50 duties carry their own exceptions**: 50(1) obviousness, 50(2)
+  assistive/standard editing, 50(4) editorial responsibility, and the
+  law-enforcement carve-out running through 50(1)–(4). An evidently artistic,
+  satirical or fictional work *limits* the 50(4) duty to a disclosure that does
+  not hamper enjoyment — it does not remove it.
 - Known coverage gaps, deliberately not faked: GPAI downstream-provider roles and
   fine exposure (Art. 99) are not yet modelled. The report does not mention fines.
 - This produces a structured assessment to support compliance planning — not

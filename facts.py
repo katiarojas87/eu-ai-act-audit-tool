@@ -30,6 +30,29 @@ Rules:
 - high_risk_domains: include only domains the system clearly operates in, from:
   employment, education, credit, insurance, essential_public_services, justice,
   migration, biometrics, law_enforcement, critical_infrastructure.
+- ANNEX III CARVE-OUTS — these domains are narrower than they sound:
+    biometric_verification_only — true if it only confirms a person is who they
+      claim to be (unlocking a phone, a door badge). Annex III(1)(a) excludes it.
+    credit_fraud_detection_only — true if it is used to detect financial fraud
+      rather than to score creditworthiness. Annex III(5)(b) excludes it.
+    insurance_life_or_health — true only for LIFE or HEALTH insurance. Motor,
+      property and other lines are not covered by Annex III(5)(c).
+- ARTICLE 50 EXCEPTIONS:
+    ai_interaction_obvious — is it obvious to a reasonable person that they are
+      dealing with an AI? (50(1) exception)
+    assistive_or_no_substantial_alteration — does it only assist standard editing
+      or leave the input substantially unaltered? (50(2) exception)
+    deepfake_content — does it generate or manipulate image/audio/video that is a
+      deep fake? (triggers 50(4))
+    artistic_creative_satirical_work — is the output part of an evidently
+      artistic, creative, satirical or fictional work? (limits 50(4))
+    text_published_public_interest — is AI-generated text published to inform the
+      public on matters of public interest? (50(4) second subparagraph)
+    human_editorial_review — did a person review it and take editorial
+      responsibility? (50(4) exception)
+    law_enforcement_authorised_detection — is the system authorised by law to
+      detect, prevent, investigate or prosecute criminal offences? (runs through
+      50(1)-(4))
 - gpai_relationship: "builds_or_finetunes" if they train/fine-tune a foundation
   model; "integrates_distributes" if they ship a product built on one;
   "uses_api" if they only call one via API; "none" otherwise.
@@ -115,7 +138,11 @@ personal_non_professional_use,
 developed_or_commissioned, supplied_under_own_name, uses_under_own_authority,
 rebranded_or_modified, imports_from_third_country, makes_available_on_market,
 established_outside_eu, public_body_or_public_service, sectoral_regime,
-interacts_with_people, generates_synthetic_content, profiling,
+biometric_verification_only, credit_fraud_detection_only, insurance_life_or_health,
+interacts_with_people, ai_interaction_obvious, generates_synthetic_content,
+assistive_or_no_substantial_alteration, deepfake_content,
+artistic_creative_satirical_work, text_published_public_interest,
+human_editorial_review, law_enforcement_authorised_detection, profiling,
 emotion_recognition, emotion_context, emotion_medical_or_safety_purpose,
 biometric_categorisation_sensitive, biometric_lawful_dataset_filtering,
 realtime_remote_biometric_id_public_le, rbi_permitted_objective,

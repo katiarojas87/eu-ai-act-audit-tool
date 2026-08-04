@@ -202,7 +202,14 @@ RBI_OBJECTIVE_LABEL = {
 }
 
 
+# Art. 50(4) duties only arise once the system produces synthetic output at all.
+# Screening a spam filter for deep fakes leaves it permanently "unresolved".
+_SYNTHETIC_GATED = {"deepfake_content", "text_published_public_interest"}
+
+
 def _prohibition_is_relevant(attr: str, f: Facts) -> bool:
+    if attr in _SYNTHETIC_GATED:
+        return f.generates_synthetic_content is not False
     if attr in _ALWAYS_RELEVANT:
         return True
     gate = _CONTEXT_GATED.get(attr)
@@ -492,6 +499,38 @@ def _evaluate_prohibited(f: Facts) -> Conclusion:
                       status="definitive")
 
 
+def _domain_status(domain: str, f: Facts) -> tuple[str, str]:
+    """Is this Annex III domain actually engaged? Returns (state, note).
+
+    The domain labels are broader than the Annex: "insurance" covers only life
+    and health, "biometrics" excludes plain verification, "credit" excludes fraud
+    detection. Without these carve-outs the tool marks motor-insurance pricing
+    and office door-badge readers as high-risk.
+    """
+    if domain == "biometrics":
+        if f.biometric_verification_only is True:
+            return "out", ("biometric verification whose sole purpose is confirming a "
+                           "claimed identity is excluded — Annex III(1)(a)")
+        if f.biometric_verification_only is None:
+            return "unclear", ("unless it is biometric verification only, which Annex "
+                               "III(1)(a) excludes")
+    elif domain == "credit":
+        if f.credit_fraud_detection_only is True:
+            return "out", ("AI used to detect financial fraud is excluded — "
+                           "Annex III(5)(b)")
+        if f.credit_fraud_detection_only is None:
+            return "unclear", ("unless it is used solely to detect financial fraud, "
+                               "which Annex III(5)(b) excludes")
+    elif domain == "insurance":
+        if f.insurance_life_or_health is False:
+            return "out", ("only life and health insurance are covered — "
+                           "Annex III(5)(c)")
+        if f.insurance_life_or_health is None:
+            return "unclear", ("only if it concerns life or health insurance; "
+                               "Annex III(5)(c) covers no other line")
+    return "in", ""
+
+
 ART_6_3_LABEL = {
     "narrow_procedural_task": "performs a narrow procedural task (Art. 6(3)(a))",
     "improves_human_output": "improves the result of a previously completed human "
@@ -510,9 +549,31 @@ def _evaluate_high_risk(f: Facts) -> Conclusion:
                           trigger="safety_component_regulated_product = true",
                           status="definitive")
     if f.high_risk_domains:
-        pts = [ANNEX_III_MAP[d] for d in f.high_risk_domains if d in ANNEX_III_MAP]
+        # Apply the Annex III carve-outs before anything else: a domain that is
+        # carved out never engaged the high-risk regime in the first place.
+        engaged, unclear, excluded = [], [], []
+        for d in f.high_risk_domains:
+            if d not in ANNEX_III_MAP:
+                continue
+            state, note = _domain_status(d, f)
+            (engaged if state == "in" else unclear if state == "unclear"
+             else excluded).append((d, note))
+
+        if not engaged and not unclear and excluded:
+            return Conclusion(
+                result="No",
+                detail="; ".join(f"{ANNEX_III_MAP[d][1]}: {note}" for d, note in excluded),
+                articles=["Art. 6(2)"] + [ANNEX_III_MAP[d][0] for d, _ in excluded],
+                trigger="every candidate Annex III domain is carved out",
+                status="definitive")
+
+        # An unresolved carve-out keeps the domain in play but makes the finding
+        # conditional — it must not short-circuit the Art. 6(3) analysis below.
+        domain_caveat = "; ".join(note for _, note in unclear)
+        active = [d for d, _ in engaged] + [d for d, _ in unclear]
+        pts = [ANNEX_III_MAP[d] for d in active]
         arts = ["Art. 6(2)"] + [a for a, _ in pts]
-        domains = ", ".join(f.high_risk_domains)
+        domains = ", ".join(active)
         ground = f.art_6_3_ground
 
         # Art. 6(3): the derogation is unavailable where the system profiles
@@ -537,11 +598,13 @@ def _evaluate_high_risk(f: Facts) -> Conclusion:
                 trigger=f"high-risk domain(s): {domains}; art_6_3_ground = {ground}",
                 status=status)
 
-        return Conclusion(result="ANNEX_III",
-                          detail="; ".join(p for _, p in pts),
-                          articles=arts,
-                          trigger=f"high-risk domain(s): {domains}",
-                          status="definitive")
+        return Conclusion(
+            result="ANNEX_III",
+            detail="; ".join(p for _, p in pts)
+                   + (f" — {domain_caveat}" if domain_caveat else ""),
+            articles=arts,
+            trigger=f"high-risk domain(s): {domains}",
+            status="conditional" if domain_caveat else "definitive")
     if f.safety_component_regulated_product is None:
         return Conclusion(result="Unclear", detail="high-risk domain not established",
                           articles=["Art. 6", "Annex III"],
@@ -552,27 +615,104 @@ def _evaluate_high_risk(f: Facts) -> Conclusion:
                       status="definitive")
 
 
+# Article 50 duties, each with the exceptions the paragraph actually contains.
+# The law-enforcement carve-out ("authorised by law to detect, prevent,
+# investigate or prosecute criminal offences") runs through 50(1)-(4).
+_LE_EXCEPTION = ("law_enforcement_authorised_detection",
+                 "the system is authorised by law to detect, prevent, investigate or "
+                 "prosecute criminal offences")
+
+TRANSPARENCY_RULES = [
+    Prohibition(
+        "interacts_with_people", "Art. 50(1)",
+        "inform people they are interacting with an AI system",
+        defeated_by=(("ai_interaction_obvious",
+                      "it is obvious to a reasonably well-informed, observant and "
+                      "circumspect person"), _LE_EXCEPTION)),
+    Prohibition(
+        "generates_synthetic_content", "Art. 50(2)",
+        "mark synthetic output in a machine-readable format",
+        defeated_by=(("assistive_or_no_substantial_alteration",
+                      "the system only performs an assistive function for standard "
+                      "editing, or does not substantially alter the input data"),
+                     _LE_EXCEPTION)),
+    Prohibition(
+        "deepfake_content", "Art. 50(4)",
+        "disclose that deep-fake content is artificially generated or manipulated",
+        defeated_by=(_LE_EXCEPTION,)),
+    Prohibition(
+        "text_published_public_interest", "Art. 50(4)",
+        "disclose AI-generated text published to inform the public on matters of "
+        "public interest",
+        defeated_by=(("human_editorial_review",
+                      "the content underwent human review and a person holds editorial "
+                      "responsibility for the publication"), _LE_EXCEPTION)),
+]
+
+
 def _evaluate_transparency(f: Facts) -> Conclusion:
-    hits, unknowns = [], []
-    if f.interacts_with_people is True:
-        hits.append(("Art. 50(1)", "chatbot must disclose it is AI"))
-    elif f.interacts_with_people is None:
-        unknowns.append("Art. 50(1)")
-    if f.generates_synthetic_content is True:
-        hits.append(("Art. 50(2)/(4)", "AI-generated/deepfake content must be labelled"))
-    elif f.generates_synthetic_content is None:
-        unknowns.append("Art. 50(2)")
+    hits, conditional, unknowns, exempt = [], [], [], []
+
+    evaluations = [(r.ref, r.label, *_evaluate_one(r, f)) for r in TRANSPARENCY_RULES]
+
+    # Art. 50(3): deployers of emotion-recognition or biometric-categorisation
+    # systems must inform those exposed — same law-enforcement carve-out.
     if f.emotion_recognition is True or f.biometric_categorisation_sensitive is True:
-        hits.append(("Art. 50(3)", "inform persons exposed to emotion/biometric systems"))
+        label = "inform persons exposed to emotion recognition / biometric categorisation"
+        if f.law_enforcement_authorised_detection is True:
+            evaluations.append(("Art. 50(3)", label, "exempt",
+                                f"the exception applies: {_LE_EXCEPTION[1]}"))
+        elif f.law_enforcement_authorised_detection is None:
+            evaluations.append(("Art. 50(3)", label, "conditional",
+                                f"unless {_LE_EXCEPTION[1]}"))
+        else:
+            evaluations.append(("Art. 50(3)", label, "hit", ""))
+
+    for ref, label, state, note in evaluations:
+        entry = (ref, f"{label} — {note}" if note else label)
+        if state == "hit":
+            hits.append(entry)
+        elif state == "conditional":
+            conditional.append(entry)
+        elif state == "exempt":
+            exempt.append(entry)
+        elif state == "unknown":
+            unknowns.append(ref)
+
+    # Art. 50(4): an evidently artistic, creative, satirical or fictional work
+    # does not remove the duty — it limits it to a disclosure that does not
+    # hamper enjoyment of the work.
+    if f.artistic_creative_satirical_work is True and (hits or conditional):
+        note = (" (artistic/creative/satirical work: disclosure limited to an "
+                "appropriate manner that does not hamper display or enjoyment)")
+        target = hits or conditional
+        target[-1] = (target[-1][0], target[-1][1] + note)
 
     if hits:
-        return Conclusion(result="Yes", detail="; ".join(p for _, p in hits),
+        return Conclusion(result="Yes", detail="; ".join(d for _, d in hits),
                           articles=[a for a, _ in hits],
-                          trigger="a transparency trigger is true", status="definitive")
+                          trigger="a transparency duty applies and no exception does",
+                          status="definitive")
+    if conditional:
+        return Conclusion(result="Yes", detail="; ".join(d for _, d in conditional),
+                          articles=[a for a, _ in conditional],
+                          trigger="a transparency duty is triggered but an exception "
+                                  "is unresolved",
+                          status="conditional")
     if unknowns:
-        return Conclusion(result="Possible", detail="depends on interaction/output",
-                          articles=sorted(set(unknowns)),
+        # Keep an established exception visible rather than letting unrelated
+        # unknowns bury it.
+        detail = "depends on interaction/output"
+        if exempt:
+            detail = ("; ".join(d for _, d in exempt)
+                      + " — other transparency triggers remain unresolved")
+        return Conclusion(result="Possible", detail=detail,
+                          articles=sorted(set(unknowns) | {a for a, _ in exempt}),
                           trigger="transparency facts unknown", status="unresolved")
+    if exempt:
+        return Conclusion(result="No", detail="; ".join(d for _, d in exempt),
+                          articles=[a for a, _ in exempt],
+                          trigger="an Article 50 exception applies", status="definitive")
     return Conclusion(result="No", detail="no transparency obligation",
                       articles=["Art. 50"], trigger="no transparency trigger",
                       status="definitive")

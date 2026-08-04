@@ -105,8 +105,27 @@ class Facts(BaseModel):
     sectoral_regime: SectoralRegime = "none"
     public_body_or_public_service: Tri = None  # Art. 27 FRIA trigger
 
-    interacts_with_people: Tri = None            # chatbot → transparency
-    generates_synthetic_content: Tri = None      # deepfake/synthetic media → transparency
+    # --- Annex III carve-outs -------------------------------------------------
+    # Each of these domains is narrower than its label suggests; without them the
+    # tool marks ordinary systems high-risk.
+    biometric_verification_only: Tri = None   # Annex III(1)(a): verification is excluded
+    credit_fraud_detection_only: Tri = None   # Annex III(5)(b): fraud detection excluded
+    insurance_life_or_health: Tri = None      # Annex III(5)(c): life/health insurance ONLY
+
+    # --- transparency (Article 50) -------------------------------------------
+    interacts_with_people: Tri = None            # Art. 50(1): chatbot disclosure
+    ai_interaction_obvious: Tri = None           # 50(1) exception: obvious to a
+                                                 # reasonably well-informed person
+    generates_synthetic_content: Tri = None      # Art. 50(2): mark synthetic output
+    assistive_or_no_substantial_alteration: Tri = None   # 50(2) exception
+    deepfake_content: Tri = None                 # Art. 50(4): deployer disclosure
+    artistic_creative_satirical_work: Tri = None # 50(4): limits, does not remove
+    text_published_public_interest: Tri = None   # Art. 50(4) second subparagraph
+    human_editorial_review: Tri = None           # 50(4) exception for published text
+    # Common to 50(1)-(4): authorised by law to detect, prevent, investigate or
+    # prosecute criminal offences.
+    law_enforcement_authorised_detection: Tri = None
+
     profiling: Tri = None
 
     # --- Article 5 prohibitions ----------------------------------------------
