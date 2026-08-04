@@ -115,6 +115,16 @@ table.matrix, table.obl { width: 100%; border-collapse: collapse; font-size: 12.
 .status.likely_gap { color: var(--prohibited); }
 .status.likely_in_place { color: var(--minimal); }
 .status.needs_confirmation { color: var(--amber-ink); }
+.src { margin-top: 5px; }
+.src summary { cursor: pointer; font-family: var(--font-sans), sans-serif; font-size: 11px; color: var(--blue); list-style: none; }
+.src summary::-webkit-details-marker { display: none; }
+.src summary::before { content: "▸ "; }
+.src[open] summary::before { content: "▾ "; }
+.srcq { margin: 6px 0 8px; padding: 8px 10px; background: var(--paper-2); border-left: 2px solid var(--amber); }
+.srcref { display: block; font-family: var(--font-mono), monospace; font-size: 10px; letter-spacing: .05em; color: var(--amber-ink); margin-bottom: 4px; }
+.srcq q { display: block; font-family: var(--font-serif), serif; font-size: 12px; line-height: 1.5; color: var(--ink); }
+.srcq a { display: inline-block; margin-top: 5px; font-size: 10.5px; color: var(--blue); }
+
 .kv { font-size: 12.5px; color: var(--ink-2); margin: 3px 0; }
 .kv b { color: var(--ink); font-weight: 500; }
 .miss { font-size: 12.5px; color: var(--ink-2); margin: 3px 0 3px 14px; }

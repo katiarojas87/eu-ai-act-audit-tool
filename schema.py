@@ -75,6 +75,14 @@ class Facts(BaseModel):
         return data
 
 
+class SourceQuote(BaseModel):
+    """A verbatim excerpt from the official EU AI Act text."""
+    ref: str                          # e.g. "Annex III(4)"
+    quote: str                        # the exact sentence from the law
+    location: str = ""                # where it sits in the official text
+    url: str = ""                     # link to the official text
+
+
 class Conclusion(BaseModel):
     """One dimension of the assessment, with provenance."""
     result: str                       # e.g. "Yes", "No", "Possible", "ANNEX_III"
@@ -82,6 +90,7 @@ class Conclusion(BaseModel):
     articles: list[str] = Field(default_factory=list)
     trigger: str = ""                 # the factual answer that triggered it
     status: Status = "unresolved"
+    sources: list[SourceQuote] = Field(default_factory=list)  # verbatim law text
 
 
 class Obligation(BaseModel):

@@ -207,7 +207,17 @@ def generate_report(client_name: str, assessments: list[Assessment],
             S.append(Paragraph(f"• {act}", BODY))
 
         S.append(Paragraph("Sources &amp; limitations", H2))
-        S.append(Paragraph("Provisions cited: " + " · ".join(_sources(a)), SMALL))
+        seen = set()
+        for c in (a.is_ai_system, a.prohibited_practice, a.high_risk, a.transparency, a.gpai):
+            for s in c.sources:
+                if s.ref in seen:
+                    continue
+                seen.add(s.ref)
+                S.append(Paragraph(f"<b>{s.ref}</b> — <i>“{s.quote}”</i>", CELL))
+                S.append(Paragraph(f"{s.location} · {s.url}", SMALL))
+                S.append(Spacer(1, 4))
+        if not seen:
+            S.append(Paragraph("Provisions cited: " + " · ".join(_sources(a)), SMALL))
         S.append(Paragraph("Based on Regulation (EU) 2024/1689 (Annexes I &amp; III, "
                            "Article 5, GPAI rules) and the curated knowledge base. "
                            "Classification is deterministic; fact extraction from the "

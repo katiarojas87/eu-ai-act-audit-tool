@@ -7,7 +7,8 @@ conclusion carries its article reference, the triggering fact, and a status
 """
 from __future__ import annotations
 
-from schema import Assessment, Conclusion, Facts, Obligation
+from citations import sources_for
+from schema import Assessment, Conclusion, Facts, Obligation, SourceQuote
 
 # --- application dates (post-Digital-Omnibus) --------------------------------
 DATE_PROHIBITED = "2 February 2025 (in force)"
@@ -76,6 +77,12 @@ GPAI_SYSTEMIC_OBLIGATIONS = [
 
 def _known(v):
     return v is not None
+
+
+def _with_sources(c: Conclusion) -> Conclusion:
+    """Attach the verbatim EU AI Act text behind each cited provision."""
+    c.sources = [SourceQuote(**s) for s in sources_for(c.articles)]
+    return c
 
 
 def _evaluate_prohibited(f: Facts) -> Conclusion:
@@ -204,17 +211,17 @@ def _obligations_for(tier: str, is_gpai: bool, systemic: bool,
 
 
 def classify(f: Facts, system_name: str = "") -> Assessment:
-    is_ai = Conclusion(
+    is_ai = _with_sources(Conclusion(
         result={True: "Yes", False: "No", None: "Unclear"}[f.is_ai_system],
         detail="within the EU AI Act definition of an AI system (Art. 3(1))",
         articles=["Art. 3(1)"],
         trigger=f"is_ai_system = {f.is_ai_system}",
-        status="definitive" if _known(f.is_ai_system) else "unresolved")
+        status="definitive" if _known(f.is_ai_system) else "unresolved"))
 
-    prohibited = _evaluate_prohibited(f)
-    high_risk = _evaluate_high_risk(f)
-    transparency = _evaluate_transparency(f)
-    gpai = _evaluate_gpai(f)
+    prohibited = _with_sources(_evaluate_prohibited(f))
+    high_risk = _with_sources(_evaluate_high_risk(f))
+    transparency = _with_sources(_evaluate_transparency(f))
+    gpai = _with_sources(_evaluate_gpai(f))
 
     # headline tier
     if f.is_ai_system is False:

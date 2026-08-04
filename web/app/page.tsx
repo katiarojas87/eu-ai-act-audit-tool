@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 
-type Conclusion = { result: string; detail: string; articles: string[]; trigger: string; status: string };
+type SourceQuote = { ref: string; quote: string; location: string; url: string };
+type Conclusion = { result: string; detail: string; articles: string[]; trigger: string; status: string; sources: SourceQuote[] };
 type Obligation = { obligation: string; deadline: string; status: string; reasoning: string; gap_question: string };
 type Assessment = {
   system_name: string; tier: string; is_gpai: boolean;
@@ -192,7 +193,21 @@ export default function Page() {
                           <tr key={label}>
                             <td className="dim">{label}</td>
                             <td>{c.result}</td>
-                            <td className="arts">{c.articles.join("  ")}</td>
+                            <td className="arts">
+                              {c.articles.join("  ")}
+                              {c.sources?.length > 0 && (
+                                <details className="src">
+                                  <summary>source text</summary>
+                                  {c.sources.map((s, si) => (
+                                    <div className="srcq" key={si}>
+                                      <span className="srcref">{s.ref}</span>
+                                      <q>{s.quote}</q>
+                                      <a href={s.url} target="_blank" rel="noreferrer">official text ↗</a>
+                                    </div>
+                                  ))}
+                                </details>
+                              )}
+                            </td>
                             <td className={`status ${c.status}`}>{c.status}</td>
                           </tr>
                         ))}
