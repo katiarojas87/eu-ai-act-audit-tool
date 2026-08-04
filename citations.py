@@ -138,6 +138,80 @@ def _clean(s: str) -> str:
 
 _ART3_RE = re.compile(r"Art\.?\s*3\((\d{1,2})\)")
 
+# Where each operative section starts in the official text, so a reference can
+# be resolved structurally instead of relying on a hand-written anchor.
+SECTION_STARTS: dict[str, tuple[str, int]] = {
+    "Art. 5": ("The following AI practices shall be prohibited", 14000),
+    "Art. 6": ("Article 6 Classification rules for high-risk AI systems", 6000),
+    "Art. 50": ("Article 50 Transparency obligations for providers and deployers", 9000),
+    "Art. 53": ("Article 53 Obligations for providers of general-purpose AI models", 9000),
+    "Art. 55": ("Article 55 Obligations of providers of general-purpose AI models with systemic risk", 9000),
+    "Annex III": ("ANNEX III High-risk AI systems referred to in Article 6(2)", 7000),
+}
+
+_REF_RE = re.compile(
+    r"^(?P<sec>Art\.?\s*\d+|Annex\s+III)"
+    r"(?:\((?P<p1>[\dA-Za-z]+)\))?"
+    r"(?:\((?P<p2>[A-Za-z]+)\))?\s*$"
+)
+
+
+def _section_bounds(sec: str) -> tuple[int, int] | None:
+    text = _law_text()
+    key = re.sub(r"Art\.?\s*", "Art. ", sec.strip())
+    entry = SECTION_STARTS.get(key)
+    if not entry:
+        return None
+    marker, span = entry
+    i = text.find(marker)
+    if i == -1:
+        return None
+    return i, min(len(text), i + span)
+
+
+def _structured(ref: str) -> dict | None:
+    """Resolve refs like Art. 5(1)(f), Art. 50(2), Annex III(5)(b) structurally."""
+    m = _REF_RE.match(ref.strip())
+    if not m:
+        return None
+    bounds = _section_bounds(m.group("sec"))
+    if not bounds:
+        return None
+    text = _law_text()
+    start, end = bounds
+
+    # Build the markers to walk, in order. For Article 5 the prohibitions sit
+    # directly under paragraph 1, so the letter is the only marker that matters.
+    parts = [p for p in (m.group("p1"), m.group("p2")) if p]
+    is_art5 = m.group("sec").replace(".", "").replace(" ", "").lower() == "art5"
+    if is_art5 and len(parts) == 2:
+        parts = parts[1:]
+
+    pos = start
+    for part in parts:
+        if part.isdigit() and not is_art5:
+            pat = re.compile(rf"(?:^|\n)\s*{part}\.\s")
+        else:
+            pat = re.compile(rf"(?:^|\n|\s)\(\s*{re.escape(part)}\s*\)\s")
+        hit = pat.search(text, pos, end)
+        if not hit:
+            return None
+        pos = hit.end() - 1
+
+    stop = text.find(";", pos)
+    dot = text.find(". ", pos)
+    cands = [x for x in (stop, dot, pos + 550) if x > pos]
+    quote_end = min(cands) if cands else min(len(text), pos + 550)
+    quote = _clean(text[pos:quote_end + 1])
+    if len(quote) < 25:
+        return None
+    return {
+        "ref": ref,
+        "quote": quote,
+        "location": f"official text, character offset {pos:,}",
+        "url": EURLEX_URL,
+    }
+
 
 def _article_3_definition(ref: str) -> dict | None:
     """Resolve any Article 3 definition — Art. 3(1) … Art. 3(42) — generically."""
@@ -203,7 +277,8 @@ def get_source(ref: str) -> dict | None:
             "location": f"official text, character offset {i:,}",
             "url": EURLEX_URL,
         }
-    return None
+    # No curated anchor matched — try to resolve the reference structurally.
+    return _structured(ref)
 
 
 def sources_for(refs: list[str]) -> list[dict]:
