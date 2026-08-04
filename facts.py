@@ -30,6 +30,11 @@ Rules:
 - high_risk_domains: include only domains the system clearly operates in, from:
   employment, education, credit, insurance, essential_public_services, justice,
   migration, biometrics, law_enforcement, critical_infrastructure.
+  Be strict — each extra domain adds obligations the client may not owe. In
+  particular, "justice" (Annex III(8)) means use BY OR ON BEHALF OF a judicial
+  authority to research facts and apply the law, or to influence an election. A
+  police or prosecution tool is "law_enforcement" (Annex III(6)) and is NOT also
+  "justice" merely because it concerns crime.
 - ANNEX III CARVE-OUTS — these domains are narrower than they sound:
     biometric_verification_only — true if it only confirms a person is who they
       claim to be (unlocking a phone, a door badge). Annex III(1)(a) excludes it.

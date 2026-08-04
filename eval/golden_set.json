@@ -1,0 +1,591 @@
+{
+  "_readme": [
+    "Labelled descriptions for evaluating fact extraction (facts.py).",
+    "Each case labels only the fields that matter for it; unlabelled fields are",
+    "not scored. 'tier' is the tier the rule engine should reach from correct",
+    "facts — verify it with `python eval/run_eval.py --check-labels`, which runs",
+    "the labels through rules.py without calling any API.",
+    "Languages are mixed on purpose: the tool is sold for NL/FR/EN/ES intake."
+  ],
+  "cases": [
+    {
+      "id": "en-cv-ranking-provider",
+      "lang": "en",
+      "name": "CV Screener & Ranker",
+      "description": "We are a software vendor. We build and sell a tool that screens and ranks job applicants for recruitment agencies across the EU. It parses CVs, scores candidates against the job requirements, and ranks them. Our customers licence it under our brand.",
+      "components": "- Ranking model fine-tuned on past hiring decisions\n- PostgreSQL (candidates, scores)\n- Recruiter web portal",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["employment"],
+        "developed_or_commissioned": true,
+        "supplied_under_own_name": true,
+        "placed_on_eu_market": true,
+        "profiling": true
+      },
+      "tier": "ANNEX_III"
+    },
+    {
+      "id": "en-cv-ranking-deployer",
+      "lang": "en",
+      "name": "Hiring Assistant",
+      "description": "Our recruitment agency in Ghent uses a CV-screening tool we licence from an American vendor. We did not build it and we do not modify it. Recruiters use it daily to rank applicants for our clients.",
+      "components": "- Vendor SaaS\n- Internal recruiter dashboard",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["employment"],
+        "developed_or_commissioned": false,
+        "uses_under_own_authority": true,
+        "rebranded_or_modified": false
+      },
+      "tier": "ANNEX_III"
+    },
+    {
+      "id": "nl-cv-finetuned-art25",
+      "lang": "nl",
+      "name": "Sollicitatie Ranker",
+      "description": "Wij zijn een bank in Antwerpen. Wij hebben een bestaand AI-model van een leverancier gekocht en het opnieuw getraind op onze eigen historische aanwervingsgegevens. Wij bieden het intern aan onder onze eigen merknaam.",
+      "components": "- Ingekocht basismodel, bijgetraind op eigen data\n- Interne HR-portaal",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["employment"],
+        "rebranded_or_modified": true,
+        "uses_under_own_authority": true,
+        "sectoral_regime": "financial_services"
+      },
+      "tier": "ANNEX_III"
+    },
+    {
+      "id": "en-chatbot-limited",
+      "lang": "en",
+      "name": "Careers Chatbot",
+      "description": "A chatbot on our careers website that answers candidate questions about open vacancies and the application process. It makes no decisions about anyone. Candidates are not told whether they are talking to a person or to software.",
+      "components": "- Web chat widget\n- LLM via API, no fine-tuning\n- FAQ knowledge base",
+      "expected": {
+        "is_ai_system": true,
+        "interacts_with_people": true,
+        "high_risk_domains": [],
+        "gpai_relationship": "uses_api"
+      },
+      "_note": "generates_synthetic_content is deliberately NOT labelled here. Whether a chatbot's text answers are 'synthetic text content' under Art. 50(2) is genuinely contested, and encoding either reading as ground truth would make the metric measure our opinion rather than the model's accuracy.",
+      "tier": "LIMITED"
+    },
+    {
+      "id": "fr-chatbot-obvious",
+      "lang": "fr",
+      "name": "Assistant virtuel",
+      "description": "Un assistant conversationnel sur notre site, présenté explicitement comme un robot avec un avatar et la mention « assistant automatique ». Il répond aux questions sur nos horaires d'ouverture. Il ne prend aucune décision concernant les personnes.",
+      "components": "- Widget de chat\n- Modèle de langage via API",
+      "expected": {
+        "is_ai_system": true,
+        "interacts_with_people": true,
+        "ai_interaction_obvious": true,
+        "high_risk_domains": []
+      },
+      "_note": "Art. 50(1) imposes no duty where the AI is obvious, so no transparency trigger and the tier is MINIMAL, not LIMITED.",
+      "tier": "MINIMAL"
+    },
+    {
+      "id": "en-emotion-workplace-prohibited",
+      "lang": "en",
+      "name": "Workplace Mood Monitor",
+      "description": "A system used by an employer that infers employees' emotions from webcam video during the working day, to flag stress and disengagement to managers. It is used purely for HR productivity purposes.",
+      "components": "- Webcam ingestion\n- Emotion-recognition model\n- Manager dashboard",
+      "expected": {
+        "is_ai_system": true,
+        "emotion_recognition": true,
+        "emotion_context": "workplace_education",
+        "emotion_medical_or_safety_purpose": false,
+        "uses_under_own_authority": true
+      },
+      "tier": "PROHIBITED"
+    },
+    {
+      "id": "en-emotion-medical-exception",
+      "lang": "en",
+      "name": "Fatigue Safety Monitor",
+      "description": "A system installed in a factory that detects signs of fatigue and drowsiness in machine operators, purely to prevent accidents with heavy machinery. It is put in place for safety reasons and alerts the operator directly.",
+      "components": "- In-cab camera\n- Drowsiness detection model\n- Audible alert",
+      "expected": {
+        "is_ai_system": true,
+        "emotion_recognition": true,
+        "emotion_context": "workplace_education",
+        "emotion_medical_or_safety_purpose": true
+      },
+      "tier": null
+    },
+    {
+      "id": "es-social-scoring-prohibited",
+      "lang": "es",
+      "name": "Puntuacion Ciudadana",
+      "description": "Un sistema que evalúa a los ciudadanos durante varios años según su comportamiento social y sus características personales, y utiliza esa puntuación para denegarles el acceso a servicios municipales no relacionados, como bibliotecas y polideportivos.",
+      "components": "- Base de datos de comportamiento\n- Modelo de puntuación\n- Integración con servicios municipales",
+      "expected": {
+        "is_ai_system": true,
+        "social_scoring": true,
+        "social_scoring_detrimental_treatment": true
+      },
+      "tier": "PROHIBITED"
+    },
+    {
+      "id": "en-facial-scraping-prohibited",
+      "lang": "en",
+      "name": "FaceIndex",
+      "description": "A tool that continuously crawls the public internet and social media to collect face images without any targeting, building a searchable facial recognition database that customers can query.",
+      "components": "- Web crawler\n- Face embedding index",
+      "expected": {
+        "is_ai_system": true,
+        "untargeted_facial_scraping": true
+      },
+      "tier": "PROHIBITED"
+    },
+    {
+      "id": "en-rbi-authorised",
+      "lang": "en",
+      "name": "Missing Persons Search",
+      "description": "A police force uses live facial recognition in public squares strictly to search for specific missing children reported in the previous 24 hours. Every deployment is authorised in advance by a judge, and use stops when the authorisation expires.",
+      "components": "- Public CCTV feed\n- Live face matching against a watchlist\n- Judicial authorisation workflow",
+      "expected": {
+        "is_ai_system": true,
+        "realtime_remote_biometric_id_public_le": true,
+        "rbi_permitted_objective": "victim_search",
+        "rbi_prior_authorisation": true,
+        "high_risk_domains": ["biometrics", "law_enforcement"]
+      },
+      "tier": "ANNEX_III"
+    },
+    {
+      "id": "en-rbi-mass-surveillance",
+      "lang": "en",
+      "name": "City Watch",
+      "description": "A municipality runs continuous live facial recognition across all city-centre cameras to identify anyone passing through, for general policing purposes. There is no specific target and no prior authorisation for individual uses.",
+      "components": "- City-wide CCTV\n- Live identification against a population database",
+      "expected": {
+        "is_ai_system": true,
+        "realtime_remote_biometric_id_public_le": true,
+        "rbi_permitted_objective": "none"
+      },
+      "tier": "PROHIBITED"
+    },
+    {
+      "id": "nl-badge-reader-carveout",
+      "lang": "nl",
+      "name": "Toegangsbadge",
+      "description": "Een gezichtsherkenningssysteem aan de ingang van ons kantoor dat enkel controleert of een medewerker daadwerkelijk de persoon is die hij beweert te zijn, voordat de deur opengaat. Het identificeert niemand uit een menigte.",
+      "components": "- Camera aan de deur\n- Vergelijking met de foto in het personeelsdossier",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["biometrics"],
+        "biometric_verification_only": true
+      },
+      "tier": null
+    },
+    {
+      "id": "en-credit-scoring",
+      "lang": "en",
+      "name": "CrediScore",
+      "description": "A model used by a consumer lender to evaluate the creditworthiness of individual loan applicants and set their credit score, which determines whether the loan is granted.",
+      "components": "- Scoring model\n- Loan origination system",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["credit"],
+        "credit_fraud_detection_only": false,
+        "profiling": true,
+        "sectoral_regime": "financial_services"
+      },
+      "tier": "ANNEX_III"
+    },
+    {
+      "id": "fr-fraud-detection-carveout",
+      "lang": "fr",
+      "name": "Detection de fraude",
+      "description": "Un système utilisé par notre banque uniquement pour détecter les fraudes sur les transactions par carte bancaire. Il signale les paiements suspects aux analystes. Il n'évalue pas la solvabilité des clients et ne sert pas à accorder des crédits.",
+      "components": "- Modèle de détection d'anomalies sur les transactions\n- File d'attente pour les analystes",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["credit"],
+        "credit_fraud_detection_only": true,
+        "sectoral_regime": "financial_services"
+      },
+      "tier": null
+    },
+    {
+      "id": "en-life-insurance",
+      "lang": "en",
+      "name": "Life Underwriting Engine",
+      "description": "An insurer uses this model for risk assessment and pricing of life insurance policies for individual applicants, based on their health questionnaire and medical history.",
+      "components": "- Underwriting risk model\n- Policy pricing engine",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["insurance"],
+        "insurance_life_or_health": true,
+        "sectoral_regime": "financial_services"
+      },
+      "tier": "ANNEX_III"
+    },
+    {
+      "id": "es-motor-insurance-carveout",
+      "lang": "es",
+      "name": "Tarificacion de automoviles",
+      "description": "Un modelo que calcula el precio de las pólizas de seguro de automóvil según el historial de siniestros del vehículo y la zona de circulación. No se utiliza para seguros de vida ni de salud.",
+      "components": "- Modelo de tarificación\n- Sistema de pólizas",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["insurance"],
+        "insurance_life_or_health": false
+      },
+      "tier": null
+    },
+    {
+      "id": "nl-onderwijs-toelating",
+      "lang": "nl",
+      "name": "Toelatingssysteem",
+      "description": "Een systeem dat door een hogeschool wordt gebruikt om te bepalen welke kandidaten worden toegelaten tot de opleiding. Het rangschikt de aanvragers automatisch op basis van hun dossier.",
+      "components": "- Rangschikkingsmodel\n- Inschrijvingsportaal",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["education"],
+        "uses_under_own_authority": true,
+        "public_body_or_public_service": true
+      },
+      "tier": "ANNEX_III"
+    },
+    {
+      "id": "fr-aide-sociale",
+      "lang": "fr",
+      "name": "Eligibilite aux aides",
+      "description": "Un système utilisé par une administration publique pour évaluer l'éligibilité des personnes aux prestations d'aide sociale, et pour décider de réduire ou de retirer ces prestations.",
+      "components": "- Modèle d'éligibilité\n- Dossier social des bénéficiaires",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["essential_public_services"],
+        "public_body_or_public_service": true,
+        "uses_under_own_authority": true
+      },
+      "tier": "ANNEX_III"
+    },
+    {
+      "id": "en-emergency-triage",
+      "lang": "en",
+      "name": "Emergency Call Triage",
+      "description": "A system used by an emergency call centre to classify incoming 112 calls and set the dispatch priority for ambulances and fire crews.",
+      "components": "- Speech classification model\n- Dispatch priority queue",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["essential_public_services"],
+        "public_body_or_public_service": true
+      },
+      "tier": "ANNEX_III"
+    },
+    {
+      "id": "en-predictive-policing-prohibited",
+      "lang": "en",
+      "name": "Offender Risk Predictor",
+      "description": "A system that predicts how likely an individual is to commit a crime, based only on profiling them and assessing their personality traits. There is no underlying objective evidence linking the person to any criminal activity.",
+      "components": "- Personality and demographic profiling model\n- Risk score dashboard",
+      "expected": {
+        "is_ai_system": true,
+        "predictive_policing_profiling_only": true,
+        "predictive_policing_supports_human_assessment": false,
+        "high_risk_domains": ["law_enforcement"]
+      },
+      "tier": "PROHIBITED"
+    },
+    {
+      "id": "en-police-case-support",
+      "lang": "en",
+      "name": "Investigation Support",
+      "description": "A tool that helps investigators weigh evidence already gathered about a suspect's involvement in a specific crime. It supports the human assessment and works from objective, verifiable facts directly linked to the criminal activity under investigation.",
+      "components": "- Evidence correlation engine\n- Investigator review interface",
+      "expected": {
+        "is_ai_system": true,
+        "predictive_policing_supports_human_assessment": true,
+        "high_risk_domains": ["law_enforcement"]
+      },
+      "_note": "predictive_policing_profiling_only is deliberately NOT labelled. A system working from objective verifiable facts is arguably not 'based solely on profiling' at all, so both true (trigger, then exception) and false (never triggered) are defensible readings and the case would measure our opinion rather than accuracy.",
+      "tier": "ANNEX_III"
+    },
+    {
+      "id": "es-control-fronteras",
+      "lang": "es",
+      "name": "Verificacion de asilo",
+      "description": "Un sistema utilizado por las autoridades de fronteras para evaluar las solicitudes de asilo y verificar la documentación de las personas que solicitan entrar en el país.",
+      "components": "- Modelo de evaluación de solicitudes\n- Verificación documental",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["migration"],
+        "public_body_or_public_service": true
+      },
+      "tier": "ANNEX_III"
+    },
+    {
+      "id": "en-justice-support",
+      "lang": "en",
+      "name": "Judgment Assistant",
+      "description": "A tool used by a court to research and interpret facts and law, and to assist a judicial authority in applying the law to a concrete set of facts in a case.",
+      "components": "- Case-law retrieval\n- Draft reasoning generator",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["justice"],
+        "public_body_or_public_service": true
+      },
+      "tier": "ANNEX_III"
+    },
+    {
+      "id": "nl-kritieke-infrastructuur",
+      "lang": "nl",
+      "name": "Netbeheer",
+      "description": "Een AI-systeem dat wordt gebruikt als veiligheidscomponent bij het beheer en de exploitatie van het elektriciteitsnet. Bij een storing kan de levering aan duizenden huishoudens uitvallen.",
+      "components": "- Belastingvoorspelling\n- Automatische netschakeling",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["critical_infrastructure"]
+      },
+      "tier": "ANNEX_III"
+    },
+    {
+      "id": "en-medical-device-annex-i",
+      "lang": "en",
+      "name": "Diagnostic Imaging AI",
+      "description": "Software that acts as a safety component of a CE-marked medical imaging device, flagging suspected tumours for the radiologist. It is sold as part of the device by the device manufacturer.",
+      "components": "- Image segmentation model\n- Integrated into the scanner software",
+      "expected": {
+        "is_ai_system": true,
+        "safety_component_regulated_product": true,
+        "developed_or_commissioned": true,
+        "supplied_under_own_name": true,
+        "sectoral_regime": "medical_devices"
+      },
+      "tier": "ANNEX_I"
+    },
+    {
+      "id": "en-spam-filter-minimal",
+      "lang": "en",
+      "name": "Spam Filter",
+      "description": "A spam filter that classifies incoming email as spam or not spam for our internal staff mailboxes. It does not interact with people, produce content, or make decisions about anyone.",
+      "components": "- Text classifier\n- Mail server integration",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": [],
+        "interacts_with_people": false,
+        "generates_synthetic_content": false,
+        "uses_under_own_authority": true
+      },
+      "tier": "MINIMAL"
+    },
+    {
+      "id": "fr-maintenance-predictive",
+      "lang": "fr",
+      "name": "Maintenance predictive",
+      "description": "Un modèle qui prédit les pannes de nos machines d'usine à partir des données de vibration des capteurs, afin de planifier la maintenance. Il ne concerne aucune personne physique.",
+      "components": "- Capteurs de vibration\n- Modèle de prédiction de pannes",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": [],
+        "interacts_with_people": false,
+        "generates_synthetic_content": false
+      },
+      "tier": "MINIMAL"
+    },
+    {
+      "id": "en-image-generator",
+      "lang": "en",
+      "name": "Marketing Image Generator",
+      "description": "A tool our marketing team uses to generate entirely new promotional images from text prompts. The output is published on social media.",
+      "components": "- Diffusion model via API\n- Asset library",
+      "expected": {
+        "is_ai_system": true,
+        "generates_synthetic_content": true,
+        "assistive_or_no_substantial_alteration": false,
+        "gpai_relationship": "uses_api"
+      },
+      "tier": "LIMITED"
+    },
+    {
+      "id": "en-spellchecker-carveout",
+      "lang": "en",
+      "name": "Copy Assistant",
+      "description": "An assistant that corrects spelling and grammar in text our staff have already written. It only performs standard editing and does not substantially change the meaning or the content of what the user wrote.",
+      "components": "- Grammar correction model\n- Word processor plugin",
+      "expected": {
+        "is_ai_system": true,
+        "generates_synthetic_content": true,
+        "assistive_or_no_substantial_alteration": true
+      },
+      "tier": null
+    },
+    {
+      "id": "es-deepfake-satira",
+      "lang": "es",
+      "name": "Generador satirico",
+      "description": "Una aplicación que crea vídeos manipulados de personajes públicos con fines claramente satíricos y humorísticos, publicados en un programa de comedia reconocido como tal.",
+      "components": "- Modelo de sustitución facial\n- Editor de vídeo",
+      "expected": {
+        "is_ai_system": true,
+        "deepfake_content": true,
+        "generates_synthetic_content": true,
+        "artistic_creative_satirical_work": true,
+        "uses_under_own_authority": true
+      },
+      "tier": "LIMITED"
+    },
+    {
+      "id": "en-news-text-editorial",
+      "lang": "en",
+      "name": "Newsroom Drafter",
+      "description": "Our newsroom uses AI to draft articles on matters of public interest. Every article is reviewed and edited by a human journalist, and our editor-in-chief holds editorial responsibility for everything we publish.",
+      "components": "- Draft generation via LLM API\n- Editorial review workflow",
+      "expected": {
+        "is_ai_system": true,
+        "text_published_public_interest": true,
+        "human_editorial_review": true,
+        "gpai_relationship": "uses_api"
+      },
+      "tier": null
+    },
+    {
+      "id": "en-gpai-provider",
+      "lang": "en",
+      "name": "Foundation Model",
+      "description": "We train our own large general-purpose language model from scratch on a very large corpus and release it for other companies to build products on.",
+      "components": "- Training cluster\n- Model weights distributed to customers",
+      "expected": {
+        "is_ai_system": true,
+        "gpai_relationship": "builds_or_finetunes",
+        "developed_or_commissioned": true,
+        "supplied_under_own_name": true,
+        "placed_on_eu_market": true
+      },
+      "tier": "MINIMAL"
+    },
+    {
+      "id": "en-us-only-out-of-scope",
+      "lang": "en",
+      "name": "US Internal HR Tool",
+      "description": "A United States company uses an internal AI tool to rank job applicants for its US offices only. The company has no establishment in the EU, no EU customers, and none of the output is used in the European Union. All candidates are based in the US.",
+      "components": "- Internal ranking model",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["employment"],
+        "established_outside_eu": true,
+        "output_used_in_eu": false,
+        "placed_on_eu_market": false
+      },
+      "tier": "OUT_OF_SCOPE"
+    },
+    {
+      "id": "en-third-country-output-in-eu",
+      "lang": "en",
+      "name": "Offshore Screening Service",
+      "description": "A company based in India screens job applicants on behalf of European employers. The rankings it produces are sent to and used by the client companies in Belgium and the Netherlands to decide who gets interviewed.",
+      "components": "- Screening model\n- Client reporting portal",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["employment"],
+        "established_outside_eu": true,
+        "output_used_in_eu": true
+      },
+      "tier": "ANNEX_III"
+    },
+    {
+      "id": "nl-militair-buiten-scope",
+      "lang": "nl",
+      "name": "Defensiesysteem",
+      "description": "Een AI-systeem dat uitsluitend wordt gebruikt voor militaire en defensiedoeleinden door het ministerie van Defensie. Het wordt niet commercieel aangeboden en heeft geen civiele toepassing.",
+      "components": "- Doelherkenning\n- Militair netwerk",
+      "expected": {
+        "is_ai_system": true,
+        "military_defence_national_security": true
+      },
+      "tier": "OUT_OF_SCOPE"
+    },
+    {
+      "id": "fr-recherche-scientifique",
+      "lang": "fr",
+      "name": "Prototype de recherche",
+      "description": "Un modèle développé et mis en service par une université dans le seul but de la recherche scientifique et du développement. Il n'est pas commercialisé et n'est utilisé sur aucun dossier réel.",
+      "components": "- Notebook de recherche\n- Jeu de données académique",
+      "expected": {
+        "is_ai_system": true,
+        "sole_purpose_scientific_research": true
+      },
+      "tier": "OUT_OF_SCOPE"
+    },
+    {
+      "id": "en-prerelease-testing",
+      "lang": "en",
+      "name": "Pre-launch Prototype",
+      "description": "We are developing a credit scoring model. It is still in research and testing in our lab before being placed on the market. It is not used on real customers and no decisions are made with it.",
+      "components": "- Development environment\n- Synthetic test data",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["credit"],
+        "prerelease_research_testing": true,
+        "real_world_testing": false
+      },
+      "tier": "OUT_OF_SCOPE"
+    },
+    {
+      "id": "en-personal-use",
+      "lang": "en",
+      "name": "Home Photo Sorter",
+      "description": "An individual uses an app on their own phone to sort personal holiday photos by who appears in them. This is purely a personal, non-professional activity with no business use.",
+      "components": "- On-device photo clustering",
+      "expected": {
+        "is_ai_system": true,
+        "personal_non_professional_use": true
+      },
+      "tier": "OUT_OF_SCOPE"
+    },
+    {
+      "id": "nl-importeur",
+      "lang": "nl",
+      "name": "Ingevoerd HR-systeem",
+      "description": "Wij zijn een Belgisch bedrijf dat een AI-wervingssysteem van een Amerikaanse fabrikant invoert en op de Europese markt aanbiedt. Het draagt de merknaam van de Amerikaanse fabrikant, niet de onze.",
+      "components": "- Distributieovereenkomst\n- Lokale ondersteuning",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["employment"],
+        "imports_from_third_country": true,
+        "rebranded_or_modified": false
+      },
+      "tier": "ANNEX_III"
+    },
+    {
+      "id": "en-not-an-ai-system",
+      "lang": "en",
+      "name": "Payroll Calculator",
+      "description": "A deterministic spreadsheet macro that multiplies hours worked by the hourly rate and applies a fixed tax table. It follows rules written by our accountant and does not learn or infer anything.",
+      "components": "- Excel macro\n- Fixed tax lookup table",
+      "expected": {
+        "is_ai_system": false
+      },
+      "tier": "NOT_AI"
+    },
+    {
+      "id": "en-manipulation-no-harm",
+      "lang": "en",
+      "name": "Nudge Widget",
+      "description": "A widget that uses persuasive design to encourage users to complete their profile on our site. It is mildly manipulative but the worst outcome is an incomplete profile — nobody suffers any significant harm.",
+      "components": "- A/B tested prompts\n- Profile completion tracker",
+      "expected": {
+        "is_ai_system": true,
+        "subliminal_or_manipulative": true,
+        "causes_significant_harm": false
+      },
+      "tier": null
+    },
+    {
+      "id": "es-categorizacion-biometrica",
+      "lang": "es",
+      "name": "Clasificador biometrico",
+      "description": "Un sistema que analiza las imágenes faciales de las personas para deducir su origen étnico y sus opiniones políticas, con el fin de segmentar la publicidad.",
+      "components": "- Modelo de análisis facial\n- Motor de segmentación publicitaria",
+      "expected": {
+        "is_ai_system": true,
+        "biometric_categorisation_sensitive": true,
+        "biometric_lawful_dataset_filtering": false
+      },
+      "tier": "PROHIBITED"
+    }
+  ]
+}

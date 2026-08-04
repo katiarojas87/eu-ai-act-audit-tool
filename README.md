@@ -78,6 +78,47 @@ npm --prefix web run dev        # http://localhost:3000
 
 Run the tests with `pytest` (they need no API key — the rule engine is pure Python).
 
+## Evaluation
+
+The rule engine is deterministic and unit-tested, so the only place a real
+assessment can go wrong is fact extraction. `eval/` measures that against 42
+labelled descriptions across NL/FR/EN/ES (`eval/golden_set.json`).
+
+```bash
+python eval/run_eval.py --check-labels   # offline, no API key: are the labels sound?
+python eval/run_eval.py                  # full run (42 API calls)
+python eval/run_eval.py --limit 5        # cheap smoke test
+```
+
+Two failure modes are scored separately, because they cost a client differently:
+
+| Verdict | Meaning | Consequence |
+|---|---|---|
+| `abstained` | the model left a fact unknown | a visible gap and a follow-up question — recoverable |
+| `wrong` | the model asserted something untrue | a confidently incorrect report nobody is prompted to check |
+
+End-to-end, a tier below the true one is an **under-warning** (the client is told
+they owe less than they do) and is gated hardest, at 2%.
+
+Latest run — `eval/last_run.json`:
+
+| Metric | Result | Target |
+|---|---|---|
+| Field accuracy | 96.8% (151/156) | ≥ 90% |
+| Wrong assertions | 0.0% | ≤ 5% |
+| Tier exact | 94.3% (33/35) | ≥ 85% |
+| Under-warned | 0.0% | ≤ 2% |
+
+**Read these as development-set numbers, not an unbiased estimate.** The prompt
+was tightened in response to failures in this same set, so it is tuned on the
+data it is scored against. A held-out set is needed for a true figure.
+
+Known from the last run: after the domain prompt was tightened, the model tends
+to return an empty `high_risk_domains` for carve-out cases (a badge reader, fraud
+detection, motor insurance) rather than naming the domain and setting the
+carve-out flag. The tier is unaffected, but the report loses the explanation —
+it can no longer say "biometrics, but excluded by Annex III(1)(a)".
+
 ## Using it in a client session
 
 1. Enter the client/company name.
