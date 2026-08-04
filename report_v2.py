@@ -18,6 +18,7 @@ from reportlab.platypus import (
 )
 
 import config
+from rules import date_basis
 from schema import Assessment
 
 NAVY = colors.HexColor("#1B2A4A")
@@ -176,7 +177,10 @@ def generate_report(client_name: str, assessments: list[Assessment],
         prof = [["Role(s) in the value chain", " + ".join(a.roles) or a.organisation_role],
                 ["Role derived from",
                  Paragraph((a.role_basis.detail if a.role_basis else "—"), CELL)],
-                ["Application date", a.application_date],
+                ["Application date",
+                 Paragraph(a.application_date + (
+                     f"<br/><font size='7' color='{MUTE.hexval()}'>{basis[0]}</font>"
+                     if (basis := date_basis(a.application_date)) else ""), CELL)],
                 ["Confidence", a.confidence],
                 ["Human review required", "Yes" if a.human_review_required else "No"]]
         S.append(_table([["Field", "Value"]] + prof, [5 * cm, 12 * cm]))

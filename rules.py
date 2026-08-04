@@ -12,13 +12,47 @@ from typing import NamedTuple
 from citations import sources_for
 from schema import Assessment, Conclusion, Facts, Obligation, SourceQuote
 
-# --- application dates (post-Digital-Omnibus) --------------------------------
+# --- application dates -------------------------------------------------------
+# Sourced, not assumed. The original Article 113 timetable was amended by the
+# Digital Omnibus on AI, which deferred both high-risk regimes:
+#
+#   Regulation (EU) 2026/1744 of the European Parliament and of the Council of
+#   8 July 2026 amending Regulations (EU) 2024/1689, (EU) 2018/1139 and
+#   (EU) 2023/1230 as regards the simplification of the implementation of
+#   harmonised rules on artificial intelligence (Digital Omnibus on AI),
+#   OJ L, 2026/1744, 24.7.2026. Article 1(40) sets the two dates below.
+#
+# data/eu_ai_act.txt is the ORIGINAL 2024 text, so citations.py cannot resolve
+# the amended dates from it. They therefore carry an explicit external basis
+# instead of a verbatim quote, and the report shows that basis.
+OMNIBUS = "Regulation (EU) 2026/1744 (Digital Omnibus on AI), OJ L, 2026/1744, 24.7.2026"
+OMNIBUS_URL = "https://eur-lex.europa.eu/eli/reg/2026/1744/oj/eng"
+AI_ACT_URL = "https://eur-lex.europa.eu/eli/reg/2024/1689/oj/eng"
+
 DATE_PROHIBITED = "2 February 2025 (in force)"
 DATE_GPAI = "2 August 2025 (in force)"
 DATE_TRANSPARENCY = "2 August 2026"
 DATE_ANNEX_III = "2 December 2027"
 DATE_ANNEX_I = "2 August 2028"
 DATE_AI_LITERACY = "2 February 2025 (in force)"
+
+# What each date rests on, so the report never states a deadline it cannot source.
+DATE_BASIS: dict[str, tuple[str, str]] = {
+    DATE_PROHIBITED: ("Art. 113(a) of Regulation (EU) 2024/1689 "
+                      "(Chapters I and II)", AI_ACT_URL),
+    DATE_GPAI: ("Art. 113(b) of Regulation (EU) 2024/1689 (Chapter V)", AI_ACT_URL),
+    DATE_TRANSPARENCY: ("Art. 113 of Regulation (EU) 2024/1689 — general date of "
+                        "application; unchanged by the Digital Omnibus", AI_ACT_URL),
+    DATE_ANNEX_III: (f"Art. 113 as amended by Art. 1(40) of {OMNIBUS} — deferred "
+                     "from 2 August 2026", OMNIBUS_URL),
+    DATE_ANNEX_I: (f"Art. 113 as amended by Art. 1(40) of {OMNIBUS} — deferred "
+                   "from 2 August 2027", OMNIBUS_URL),
+}
+
+
+def date_basis(date: str) -> tuple[str, str] | None:
+    """The legal basis for an application date, or None if it has none."""
+    return DATE_BASIS.get(date)
 
 # --- prohibited practices (Article 5) ----------------------------------------
 # Almost none of the Article 5 bans is absolute: each has statutory elements
@@ -140,10 +174,18 @@ DISTRIBUTOR_OBLIGATIONS = [
 ]
 
 # Art. 4 binds providers AND deployers, at every risk tier, already in force.
+# Art. 1(5) of the Digital Omnibus replaced it: the duty is now to "take measures
+# to support the development of AI literacy", and it expressly does NOT require
+# guaranteeing any particular level for any individual. Saying "ensure staff are
+# trained" would overstate what the client owes.
 UNIVERSAL_OBLIGATIONS = [
-    ("AI literacy — ensure staff operating or using the system are sufficiently "
-     "trained", "Art. 4"),
+    ("AI literacy — take measures to support the development of AI literacy among "
+     "staff and others operating the system on your behalf", "Art. 4"),
 ]
+AI_LITERACY_NOTE = (
+    "Art. 4 as amended by Art. 1(5) of the Digital Omnibus: the duty is to take "
+    "measures appropriate to the staff's knowledge and the context of use. It does "
+    "not require guaranteeing any specific level of AI literacy for any individual.")
 GPAI_OBLIGATIONS = [
     "Technical documentation of the model",
     "Information & documentation to downstream providers",
@@ -898,9 +940,16 @@ def _obligations_for(tier: str, is_gpai: bool, systemic: bool,
                     for t, a in DISTRIBUTOR_OBLIGATIONS]
 
     if transparency.result == "Yes":
+        note = transparency.detail
+        if f.generates_synthetic_content is True:
+            # Art. 1(38) of the Digital Omnibus: four months' grace on the
+            # marking duty for systems already on the market before 2 Aug 2026.
+            note += (" — providers of generative systems placed on the market before "
+                     "2 August 2026 have a four-month transitional period for the "
+                     "marking obligation (Art. 1(38), Digital Omnibus)")
         out.append(Obligation(obligation="Transparency: disclosure / labelling",
                               deadline=DATE_TRANSPARENCY, role="all",
-                              article="Art. 50", reasoning=transparency.detail))
+                              article="Art. 50", reasoning=note))
     if is_gpai:
         out += [Obligation(obligation=o, deadline=DATE_GPAI, role="provider",
                            article="Art. 53") for o in GPAI_OBLIGATIONS]
@@ -913,7 +962,8 @@ def _obligations_for(tier: str, is_gpai: bool, systemic: bool,
     if tier not in ("NOT_AI",) and (
             {"provider", "deployer"} & set(roles) or roles == ["unknown"]):
         out += [Obligation(obligation=t, deadline=DATE_AI_LITERACY, role="all",
-                           article=a) for t, a in UNIVERSAL_OBLIGATIONS]
+                           article=a, reasoning=AI_LITERACY_NOTE)
+                for t, a in UNIVERSAL_OBLIGATIONS]
     return out
 
 

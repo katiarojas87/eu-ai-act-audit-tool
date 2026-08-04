@@ -679,3 +679,41 @@ def test_every_article_50_provision_cited_has_a_source():
               _dom(emotion_recognition=True, law_enforcement_authorised_detection=False)):
         for ref in classify(f).transparency.articles:
             assert get_source(ref), f"{ref} has no verbatim source"
+
+
+# --- application dates must be sourced ----------------------------------------
+def test_every_dated_obligation_has_a_legal_basis():
+    """The dates were the only uncited legal content in the tool."""
+    from rules import DATE_ANNEX_I, DATE_ANNEX_III, DATE_TRANSPARENCY, date_basis
+    for d in (DATE_ANNEX_III, DATE_ANNEX_I, DATE_TRANSPARENCY):
+        basis, url = date_basis(d)
+        assert basis and url.startswith("https://eur-lex.europa.eu")
+
+
+def test_deferred_dates_cite_the_amending_regulation():
+    from rules import DATE_ANNEX_I, DATE_ANNEX_III, date_basis
+    for d in (DATE_ANNEX_III, DATE_ANNEX_I):
+        basis, _ = date_basis(d)
+        assert "2026/1744" in basis, "a deferred date must name the amending act"
+        assert "deferred from" in basis
+
+
+def test_ai_literacy_wording_matches_the_amended_article_4():
+    """Art. 1(5) of the Omnibus replaced 'ensure' with 'take measures to support'."""
+    a = classify(_hr(uses_under_own_authority=True))
+    lit = [o for o in a.obligations if o.article == "Art. 4"]
+    assert lit, "Art. 4 obligation missing"
+    text = lit[0].obligation.lower()
+    assert "take measures to support" in text
+    assert "ensure" not in text
+    assert "does not require guaranteeing" in lit[0].reasoning.lower()
+
+
+def test_generative_systems_get_the_article_50_transitional_note():
+    a = classify(Facts(is_ai_system=True, placed_on_eu_market=True,
+                       generates_synthetic_content=True,
+                       assistive_or_no_substantial_alteration=False,
+                       law_enforcement_authorised_detection=False,
+                       uses_under_own_authority=True))
+    t = [o for o in a.obligations if o.article == "Art. 50"]
+    assert t and "four-month transitional" in t[0].reasoning
