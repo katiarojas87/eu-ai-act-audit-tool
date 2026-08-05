@@ -111,14 +111,25 @@ Two sets:
 python eval/run_eval.py --set holdout
 ```
 
-Held-out run (`eval/holdout_run.json`) — 30 cases, the unbiased numbers:
+Held-out run (`eval/holdout_run.json`) — 30 cases. **Every rate is reported with
+a Wilson 95% interval and its denominator**, because a point estimate from ~100
+observations is not a measurement and quoting it as one is the fastest way to
+lose an argument with someone who checks:
 
-| Metric | Held-out | Development | Target |
+| Metric | Held-out (95% CI) | Target | Verdict |
 |---|---|---|---|
-| Field accuracy | **97.1%** (101/104) | 96.8% | ≥ 90% |
-| Wrong assertions | **1.0%** | 0.0% | ≤ 5% |
-| Tier exact | **100%** (17/17) | 94.3% | ≥ 85% |
-| Under-warned | **0.0%** | 0.0% | ≤ 2% |
+| Field accuracy | **97.1%** (91.9–99.0%, n=104) | ≥ 90% | **pass** — interval clears the gate |
+| Wrong assertions | **1.0%** (0.2–5.2%, n=104) | ≤ 5% | *unproven* — interval crosses 5% |
+| Tier exact | **100%** (81.6–100%, n=17) | ≥ 85% | *unproven* — interval reaches 81.6% |
+| Under-warned | **0.0%** (0–18.4%, n=17) | ≤ 2% | *unproven* — 0/17 cannot show 2% |
+
+Only field accuracy is actually demonstrated. The other three are consistent
+with the targets but do not establish them: 0 under-warnings out of 17 is
+compatible with a true rate up to 18%, and showing ≤ 2% needs on the order of
+150 clean tier-asserting cases. `run_eval.py` prints `PASS` / `UNPROVEN` /
+`FAIL` on this basis and will not report an unproven gate as met.
+
+**Do not quote these figures without their intervals.**
 
 Discipline for the held-out set: do not change `facts.py` in response to a
 failure there without first reproducing it in the development set, and never
@@ -135,6 +146,58 @@ model error: a company that builds its own portal on a bought model but uses it
 only internally is neither cleanly `integrates_distributes` (they distribute
 nothing) nor `uses_api` (they built a system around it). Left unresolved rather
 than tuned away.
+
+### Is the eval set good enough to support the claim?
+
+Three checks answer that, all offline and free. They exist because "we scored
+the fields we chose to label" is the first thing a hostile reader attacks, and
+none of it is a matter of opinion — `rules.py` is deterministic, so sufficiency
+and coverage are decidable by brute force.
+
+```bash
+python eval/completeness.py --set holdout    # do the labels pin the answers?
+python eval/coverage_matrix.py --both        # what does the set never test?
+python eval/coverage_matrix.py --branches    # which lines of rules.py it reaches
+python eval/obligations.py --check           # has the duty set drifted?
+```
+
+**Label sufficiency** (`completeness.py`) perturbs every *unlabelled* field
+across every value it could take and re-runs the engine. If the tier, roles or
+duty set moves, that field was decisive and the case does not pin its own
+answer. Current state: **0 of 42 development cases are fully pinned**, with 850
+unlabelled-but-decisive field instances, 513 of which would move the tier. Those
+are facts the model could get wrong with nothing in the scorecard noticing. The
+tool ranks them, so labelling effort goes where it changes outcomes.
+
+**Decision-space coverage** (`coverage_matrix.py`) reports which legally
+meaningful situations the set exercises — every tier, role, Annex III domain,
+Art. 5 prohibition and carve-out. Currently **51/59 across both sets**, and
+**80% of `rules.py` lines** are reached. Never tested: the `distributor` role,
+the `UNDETERMINED` tier, `exploits_vulnerabilities`, CSAM generation,
+`art_6_3_ground`, the law-enforcement carve-out, lawful dataset filtering, and
+`depicted_person_consented`. Several prohibitions rest on a single case.
+
+**Obligation baseline** (`obligations.py`) scores the thing a client actually
+receives. Field accuracy measures an intermediate; the deliverable is a duty
+list, and a correct `ANNEX_III` tier that silently drops the Art. 27 FRIA scored
+as a flawless result before this existed. Duties are keyed `role:article`
+(`deployer:Art. 27` and `provider:Art. 27` are different claims about the law),
+frozen to `eval/obligation_baseline.json`, and `--check` fails on drift. Because
+it runs on the *labelled* facts it isolates the rule engine from extraction: any
+difference is the engine's reading of the law. **That file is the artefact
+counsel can review without reading the schema** — the cheapest route to the
+external ground truth this project still lacks.
+
+### What the eval does not establish
+
+Every test in `test_rules.py` encodes one person's reading of the Act. They
+prove the engine is self-consistent, not that it is right, and `tier_exact`
+largely re-tests extraction because the engine is deterministic. There is no
+external ground truth here yet. The two things that would change that: worked
+examples from the Commission's own guidelines converted into cases, and blind
+dual annotation by an EU AI Act lawyer with agreement measured (Cohen's κ) on
+tier, role and duty set. Until then this supports compliance *planning* and is
+not an accuracy claim.
 
 ## Using it in a client session
 
@@ -172,7 +235,10 @@ than tuned away.
 | `web/` | **The frontend** — Next.js. The only UI. |
 | `scope_input.py` | Consultant-supplied Art. 2 scope facts from the UI. |
 | `eval/` | Golden set + scorer for fact-extraction accuracy. |
-| `test_*.py` | Unit tests — run `pytest` (252, no API key needed). |
+| `eval/completeness.py` | Label sufficiency — do the labels pin the answers? |
+| `eval/coverage_matrix.py` | Decision-space + line coverage of the rule engine. |
+| `eval/obligations.py` | Duty-set review and regression baseline (counsel-reviewable). |
+| `test_*.py` | Unit tests — run `pytest` (282, no API key needed). |
 
 ## Notes
 
