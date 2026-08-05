@@ -11,3 +11,6 @@ venv/
 .DS_Store
 .claude/
 web/tsconfig.tsbuildinfo
+.coverage
+htmlcov/
+.pytest_cache/

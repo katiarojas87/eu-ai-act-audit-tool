@@ -289,3 +289,37 @@ def test_obligation_keys_reflect_the_engine():
     keys = obligation_keys(a)
     assert "provider:Art. 9" in keys
     assert all(":" in k for k in keys)
+
+
+# --- label sufficiency ---------------------------------------------------------
+def test_unlabelled_decisive_field_is_detected():
+    """A case that does not pin an Art. 2 carve-out does not pin its own answer."""
+    from eval.completeness import analyse_case
+    case = {"id": "t", "name": "CV Screener",
+            "expected": {"is_ai_system": True, "high_risk_domains": ["employment"],
+                         "placed_on_eu_market": True}}
+    r = analyse_case(case)
+    flagged = {d["field"] for d in r["decisive_unlabelled"]}
+    # Left unlabelled, any of these flips the assessment to OUT_OF_SCOPE.
+    assert "military_defence_national_security" in flagged
+    assert not r["sufficient"]
+
+
+def test_fully_pinned_case_reports_sufficient():
+    """Labelling every decisive field makes the case self-determining."""
+    from eval.completeness import analyse_case
+    expected = {"is_ai_system": False}
+    # Pin everything the engine could otherwise move on.
+    for f in Facts.model_fields:
+        expected.setdefault(f, Facts.model_fields[f].default)
+    r = analyse_case({"id": "t", "name": "x", "expected": expected})
+    assert r["sufficient"], r["decisive_unlabelled"]
+
+
+def test_labelled_fields_are_never_flagged():
+    from eval.completeness import analyse_case
+    case = {"id": "t", "name": "x",
+            "expected": {"is_ai_system": True, "social_scoring": True,
+                         "social_scoring_detrimental_treatment": True}}
+    flagged = {d["field"] for d in analyse_case(case)["decisive_unlabelled"]}
+    assert not (flagged & set(case["expected"]))
