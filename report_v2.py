@@ -282,6 +282,33 @@ def generate_report(client_name: str, assessments: list[Assessment],
         else:
             S.append(Paragraph("None — all decisive facts were established.", BODY))
 
+        # A boolean in a table cell is easy to skim past. Where this assessment
+        # must not be acted on unreviewed, say so where the reader cannot miss
+        # it — a compliance product that buries its own uncertainty in JSON is
+        # worse than one that has none to report.
+        if a.human_review_required:
+            why = []
+            if a.tier in ("PROHIBITED", "ANNEX_I", "ANNEX_III"):
+                why.append(f"the {a.tier} determination carries the heaviest duties")
+            if a.tier == "UNDETERMINED":
+                why.append("it could not be established that this is an AI system")
+            if a.confidence == "low":
+                why.append("decisive facts are missing")
+            if a.high_risk.result == "ANNEX_III_EXEMPT":
+                why.append("a claimed Art. 6(3) derogation must be verified")
+            if a.prohibited_practice.status == "conditional":
+                why.append("a prohibition is triggered but an exception is unresolved")
+            S.append(Paragraph(
+                "<b>HUMAN REVIEW REQUIRED before this is relied on.</b> "
+                + ("Reason: " + "; ".join(why) + "." if why else "")
+                + " Confidence in this assessment is "
+                f"<b>{a.confidence}</b>.",
+                ParagraphStyle("review", parent=BODY,
+                               textColor=colors.HexColor("#B0203C"),
+                               borderColor=colors.HexColor("#B0203C"),
+                               borderWidth=0.8, borderPadding=5,
+                               spaceBefore=6, spaceAfter=8)))
+
         S.append(Paragraph("Recommended actions", H2))
         for act in _recommended_actions(a):
             S.append(Paragraph(f"• {act}", BODY))
@@ -331,7 +358,42 @@ def generate_report(client_name: str, assessments: list[Assessment],
                            "Classification is deterministic; fact extraction from the "
                            "description may be incomplete — see missing evidence.", SMALL))
 
+    # --- methodology and scope of the assessment ------------------------------
+    # The reader is entitled to know how the conclusions were produced and what
+    # the tool does not model. Stating the unmodelled areas is what keeps an
+    # omission a disclosed limit rather than a silent gap.
     S.append(Spacer(1, 14))
+    S.append(Paragraph("How this assessment was produced", H2))
+    S.append(Paragraph(
+        "Classification is <b>deterministic</b>. A language model extracts structured "
+        "facts from the description you supplied; it does not decide the outcome. A "
+        "rule engine then applies Regulation (EU) 2024/1689 to those facts, and every "
+        "conclusion above cites the provision it rests on, quoted verbatim from the "
+        "consolidated text. The same facts always produce the same result.", BODY))
+    S.append(Paragraph(
+        "The remaining error surface is therefore fact extraction — whether the "
+        "description was read correctly. That is measured against held-out labelled "
+        "cases and reported with confidence intervals; figures are in the project "
+        "README under <i>Evaluation</i>. Facts that could not be established are "
+        "listed as missing evidence rather than guessed.", BODY))
+
+    S.append(Paragraph("What this assessment does not cover", H2))
+    for lim in [
+        "<b>Administrative fines (Art. 99) are not modelled.</b> No penalty exposure "
+        "is estimated anywhere in this report.",
+        "<b>Obligations of downstream GPAI providers</b> beyond the Art. 3(68) "
+        "distinction are not fully modelled.",
+        "<b>Ambiguous provisions are not resolved.</b> Where the Act admits more than "
+        "one reading, the engine applies one reading and flags the conclusion for "
+        "review; it does not adjudicate the ambiguity.",
+        "<b>National implementing law and sectoral regimes</b> outside those noted "
+        "are not assessed.",
+        "<b>This is not a conformity assessment</b> under Art. 43, and it is not "
+        "evidence of compliance for any authority.",
+    ]:
+        S.append(Paragraph(f"• {lim}", BODY))
+
+    S.append(Spacer(1, 6))
     S.append(HRFlowable(width="100%", thickness=1, color=AMBER, spaceBefore=4, spaceAfter=6))
     S.append(Paragraph("<b>PRELIMINARY ASSESSMENT — NOT LEGAL ADVICE.</b> This document "
                        "supports compliance planning. It does not constitute legal advice, "

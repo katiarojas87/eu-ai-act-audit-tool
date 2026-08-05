@@ -52,6 +52,30 @@ SETS = {
 # human in the UI rather than extracted, so neither belongs in this analysis.
 _SKIP = {"purpose", "sector", "affected_persons", "organisation_role"}
 
+# --- legal scope gates (Article 2) -------------------------------------------
+# These four decide whether the Regulation applies AT ALL. Any one of them being
+# true takes the system out of scope entirely (Art. 2(3), 2(6), 2(8), 2(10)) and
+# zeroes the obligation list, so an unstated one is not a missing detail — it is
+# an unchecked assumption that the Regulation applies. They are mandatory in
+# every case, including the ones where the answer is an obvious "false":
+# labelling the obvious is what lets the eval catch the model getting it wrong.
+SCOPE_GATES = (
+    "military_defence_national_security",   # Art. 2(3)
+    "sole_purpose_scientific_research",     # Art. 2(6)
+    "prerelease_research_testing",          # Art. 2(8)
+    "personal_non_professional_use",        # Art. 2(10)
+)
+
+
+def missing_required(case: dict) -> list[str]:
+    """Scope gates this case fails to state. Empty means the case is admissible."""
+    return [g for g in SCOPE_GATES if g not in case.get("expected", {})]
+
+
+def validate_cases(cases: list[dict]) -> list[tuple[str, list[str]]]:
+    """Every case must state every scope gate. Returns the offenders."""
+    return [(c["id"], m) for c in cases if (m := missing_required(c))]
+
 
 def _candidate_values(field: str) -> list:
     """Every value this field could plausibly take, other than its default."""

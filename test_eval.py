@@ -323,3 +323,112 @@ def test_labelled_fields_are_never_flagged():
                          "social_scoring_detrimental_treatment": True}}
     flagged = {d["field"] for d in analyse_case(case)["decisive_unlabelled"]}
     assert not (flagged & set(case["expected"]))
+
+
+# --- Article 2 scope gates -----------------------------------------------------
+# These four decide whether the Regulation applies at all, so an unstated one is
+# an unchecked assumption rather than a missing detail.
+def test_every_case_states_the_scope_gates():
+    from eval.completeness import validate_cases
+    import json
+    from eval.run_eval import SETS
+    for which, path in SETS.items():
+        cases = json.loads(path.read_text(encoding="utf-8"))["cases"]
+        incomplete = validate_cases(cases)
+        assert not incomplete, f"{which}: {incomplete[:3]}"
+
+
+def test_missing_scope_gate_is_reported():
+    from eval.completeness import missing_required
+    assert missing_required({"expected": {"is_ai_system": True}})
+    full = {"expected": {g: False for g in
+                         __import__("eval.completeness", fromlist=["x"]).SCOPE_GATES}}
+    assert missing_required(full) == []
+
+
+def test_scope_gates_are_no_longer_flagged_as_unlabelled():
+    """The whole point of labelling them: completeness stops reporting them."""
+    from eval.completeness import SCOPE_GATES, analyse_case
+    import json
+    from eval.run_eval import SETS
+    cases = json.loads(SETS["golden"].read_text(encoding="utf-8"))["cases"]
+    flagged = {d["field"] for c in cases[:12]
+               for d in analyse_case(c)["decisive_unlabelled"]}
+    assert not (flagged & set(SCOPE_GATES))
+
+
+# --- near-miss boundaries ------------------------------------------------------
+def test_near_miss_pairs_isolate_one_fact_and_move_the_outcome():
+    from eval.near_miss_tests import check_pair, load_pairs
+    pairs = load_pairs()
+    assert len(pairs) >= 5
+    for p in pairs:
+        r = check_pair(p)
+        assert r["isolated"], f"{r['id']} differs in {r['differing']}"
+        assert r["sensitive"], f"{r['id']} moved {r['moved']}, needed {r['required']}"
+        assert r["tiers_ok"], r["id"]
+        assert r["invariant_ok"], r["invariant_detail"]
+
+
+def test_near_miss_covers_the_documented_boundaries():
+    from eval.near_miss_tests import load_pairs
+    fields = {p["decisive_field"] for p in load_pairs()}
+    assert {"insurance_life_or_health", "biometric_verification_only",
+            "credit_fraud_detection_only", "gpai_relationship"} <= fields
+
+
+def test_some_near_miss_pairs_share_a_tier():
+    """If every pair moved the tier, the tier metric would suffice. It does not."""
+    from eval.near_miss_tests import load_pairs
+    assert any(p["a"]["tier"] == p["b"]["tier"] for p in load_pairs())
+
+
+# --- obligation metrics --------------------------------------------------------
+def test_f2_punishes_a_missing_duty_more_than_an_extra_one():
+    from eval.score import score_obligations
+    owed = {"provider:Art. 9", "provider:Art. 10", "provider:Art. 11"}
+    dropped = score_obligations(owed, {"provider:Art. 9", "provider:Art. 10"})
+    added = score_obligations(owed, owed | {"provider:Art. 99"})
+    assert dropped["f2"] < added["f2"]
+    assert dropped["under_warning_rate"] > 0
+    assert added["under_warning_rate"] == 0
+
+
+def test_aggregate_obligations_is_micro_averaged():
+    from eval.score import aggregate_obligations
+    big = ({f"provider:Art. {i}" for i in range(10)},
+           {f"provider:Art. {i}" for i in range(10)})
+    small = ({"all:Art. 4"}, set())
+    agg = aggregate_obligations([big, small])
+    assert agg["expected"] == 11 and agg["correct"] == 10
+    assert agg["recall"] == pytest.approx(10 / 11)
+    assert agg["exact_cases"] == 1
+
+
+def test_slice_obligations_localises_the_error():
+    from eval.score import slice_obligations
+    pairs = [({"deployer:Art. 27", "provider:Art. 9"}, {"provider:Art. 9"})]
+    by_role = slice_obligations(pairs, "role")
+    assert by_role["deployer"]["missing"] == 1
+    assert by_role["provider"]["missing"] == 0
+    by_article = slice_obligations(pairs, "article")
+    assert by_article["Art. 27"]["missing"] == 1
+
+
+# --- annotation planning -------------------------------------------------------
+def test_observations_needed_is_zero_when_already_proven():
+    from eval.score import observations_needed
+    assert observations_needed(1000, 1000, 0.85, ceiling=False) == 0
+
+
+def test_proving_a_strict_ceiling_needs_many_more_cases():
+    """0/17 under-warnings cannot demonstrate a 2% ceiling."""
+    from eval.score import observations_needed
+    need = observations_needed(0, 17, 0.02, ceiling=True)
+    assert need is not None and need > 100
+
+
+def test_scaffold_reports_a_gap_without_inventing_cases():
+    from eval.scaffold_cases import current_counts
+    tier, total = current_counts()
+    assert tier > 0 and total >= tier

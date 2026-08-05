@@ -37,7 +37,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from eval.score import obligation_keys, score_obligations  # noqa: E402
+from eval.score import (  # noqa: E402
+    aggregate_obligations, obligation_keys, score_obligations, slice_obligations,
+)
 from rules import classify  # noqa: E402
 from schema import Facts  # noqa: E402
 
@@ -114,6 +116,84 @@ def check(cases: list[dict], which: str) -> int:
     return 1 if (drifted or unknown) else 0
 
 
+def metrics(cases: list[dict], which: str) -> int:
+    """Duty-set metrics against the reviewed baseline, sliced three ways.
+
+    WHAT THIS IS AND IS NOT: the baseline was generated from the engine, so
+    until counsel has reviewed and corrected it this measures DRIFT — the
+    engine against its own frozen reading — not correctness. That makes it a
+    regression gate today and a correctness metric the moment the baseline is
+    reviewed. The distinction is worth keeping, because a perfect score here
+    proves the engine has not changed, not that it is right.
+    """
+    if not BASELINE.exists():
+        print(f"No baseline at {BASELINE}. Run --freeze first.")
+        return 1
+    baseline = json.loads(BASELINE.read_text(encoding="utf-8")).get(which, {})
+    if not baseline:
+        print(f"No baseline entries for set '{which}'. Run --freeze --set {which}.")
+        return 1
+
+    pairs: list[tuple[set[str], set[str]]] = []
+    by_tier: dict[str, list[tuple[set[str], set[str]]]] = {}
+    for case in cases:
+        now = duties_for(case)
+        was = baseline.get(now["id"])
+        if was is None:
+            continue
+        pair = (set(was["duties"]), set(now["duties"]))
+        pairs.append(pair)
+        by_tier.setdefault(was["tier"], []).append(pair)
+
+    if not pairs:
+        print("No cases in the baseline. Run --freeze.")
+        return 1
+
+    agg = aggregate_obligations(pairs)
+    print("=" * 74)
+    print(f"OBLIGATION METRICS — {agg['cases']} cases, {agg['expected']} owed duties")
+    print("=" * 74)
+    print("  (engine vs frozen baseline — drift, not correctness, until reviewed)")
+    print(f"\n  recall     {agg['display']['recall']}")
+    print("             share of owed duties the client WAS told about")
+    print(f"  precision  {agg['display']['precision']}")
+    print(f"  F1         {agg['f1']:.3f}")
+    print(f"  F2         {agg['f2']:.3f}   <- headline: recall weighted 4x")
+    print(f"\n  under-warning  {agg['under_warning_rate']:6.2%}   "
+          f"({len(agg['missing'])} owed duties omitted)")
+    print(f"  over-warning   {agg['over_warning_rate']:6.2%}   "
+          f"({len(agg['extra'])} duties added that are not owed)")
+    print(f"  exact duty set {agg['display']['exact_rate']}")
+
+    for by in ("role", "article"):
+        sl = slice_obligations(pairs, by)
+        bad = {k: v for k, v in sl.items() if v["missing"] or v["extra"]}
+        print(f"\nBY {by.upper()}  ({len(sl)} distinct)")
+        rows = bad or dict(list(sl.items())[:8])
+        for key, s in rows.items():
+            flag = "  <- errors" if (s["missing"] or s["extra"]) else ""
+            print(f"    {key:34} owed={s['expected']:4} missing={s['missing']:3} "
+                  f"extra={s['extra']:3} recall={s['recall']:6.1%}{flag}")
+        if not bad:
+            print(f"    (no {by} shows a missing or extra duty)")
+
+    print("\nBY TIER")
+    for tier, tp in sorted(by_tier.items()):
+        t = aggregate_obligations(tp)
+        print(f"    {tier:14} cases={t['cases']:3} owed={t['expected']:4} "
+              f"recall={t['recall']:6.1%} precision={t['precision']:6.1%} "
+              f"F2={t['f2']:.3f}")
+
+    print("\n" + "=" * 74)
+    if agg["missing"]:
+        print(f"  {len(agg['missing'])} MISSING duties — these are the serious ones")
+        for d in sorted(set(agg["missing"]))[:15]:
+            print(f"    {d}")
+    else:
+        print("  no duty omitted anywhere")
+    return 0
+
+
 def show(cases: list[dict]) -> int:
     rows = [duties_for(c) for c in cases]
     total = sum(len(r["duties"]) for r in rows)
@@ -138,6 +218,9 @@ def main() -> int:
     ap.add_argument("--set", dest="which", choices=sorted(SETS), default="golden")
     ap.add_argument("--freeze", action="store_true", help="write the reviewed baseline")
     ap.add_argument("--check", action="store_true", help="fail on drift from the baseline")
+    ap.add_argument("--metrics", action="store_true",
+                    help="recall / precision / F1 / F2 / under-warning, by role, "
+                         "article and tier")
     args = ap.parse_args()
 
     cases = json.loads(SETS[args.which].read_text(encoding="utf-8"))["cases"]
@@ -145,6 +228,8 @@ def main() -> int:
         return freeze(cases, args.which)
     if args.check:
         return check(cases, args.which)
+    if args.metrics:
+        return metrics(cases, args.which)
     return show(cases)
 
 

@@ -20,10 +20,15 @@
       "components": "- Ceiling cameras\n- Proximity detection model\n- Klaxon and dashboard alert",
       "expected": {
         "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
         "safety_component_regulated_product": true,
+        "sole_purpose_scientific_research": false,
         "uses_under_own_authority": true
       },
-      "tier": "ANNEX_I"
+      "tier": "ANNEX_I",
+      "tier_asserting_case": true
     },
     {
       "id": "ho-nl-schoolexamen",
@@ -32,14 +37,19 @@
       "description": "Een systeem dat door een middelbare school wordt gebruikt om examens van leerlingen automatisch te beoordelen en de eindcijfers vast te stellen. De leraar controleert de uitkomst niet.",
       "components": "- Beoordelingsmodel\n- Leerlingvolgsysteem",
       "expected": {
-        "is_ai_system": true,
         "high_risk_domains": [
           "education"
         ],
-        "uses_under_own_authority": true,
-        "public_body_or_public_service": true
+        "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "public_body_or_public_service": true,
+        "sole_purpose_scientific_research": false,
+        "uses_under_own_authority": true
       },
-      "tier": "ANNEX_III"
+      "tier": "ANNEX_III",
+      "tier_asserting_case": true
     },
     {
       "id": "ho-fr-teleconseiller",
@@ -48,12 +58,17 @@
       "description": "Un agent vocal qui appelle nos clients pour confirmer leurs rendez-vous. La voix est synthétique et imite une voix humaine ; rien n'indique à l'appelé qu'il parle à une machine.",
       "components": "- Synthèse vocale\n- Automate d'appels",
       "expected": {
-        "is_ai_system": true,
-        "interacts_with_people": true,
         "ai_interaction_obvious": false,
+        "interacts_with_people": true,
+        "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "sole_purpose_scientific_research": false,
         "uses_under_own_authority": true
       },
-      "tier": "LIMITED"
+      "tier": "LIMITED",
+      "tier_asserting_case": true
     },
     {
       "id": "ho-es-triaje-hospital",
@@ -62,14 +77,19 @@
       "description": "Un sistema hospitalario que clasifica a los pacientes que llegan a urgencias y establece el orden de atención según la gravedad estimada.",
       "components": "- Modelo de clasificación de gravedad\n- Pantalla de triaje",
       "expected": {
-        "is_ai_system": true,
         "high_risk_domains": [
           "essential_public_services"
         ],
+        "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
         "public_body_or_public_service": true,
+        "sole_purpose_scientific_research": false,
         "uses_under_own_authority": true
       },
-      "tier": "ANNEX_III"
+      "tier": "ANNEX_III",
+      "tier_asserting_case": true
     },
     {
       "id": "ho-en-gpai-downstream",
@@ -78,12 +98,17 @@
       "description": "We sell a contract-drafting product to law firms under our own brand. It is built on top of a large language model licensed from a third-party model provider. We do not train or fine-tune that model; we wrap it with our own prompts and interface.",
       "components": "- Third-party LLM under licence\n- Prompt orchestration layer\n- Web product",
       "expected": {
-        "is_ai_system": true,
-        "gpai_relationship": "integrates_distributes",
         "developed_or_commissioned": true,
+        "gpai_relationship": "integrates_distributes",
+        "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "sole_purpose_scientific_research": false,
         "supplied_under_own_name": true
       },
-      "tier": null
+      "tier": null,
+      "tier_asserting_case": false
     },
     {
       "id": "ho-en-gpai-open-source",
@@ -92,12 +117,17 @@
       "description": "We train a general-purpose language model from scratch and release it under a free and open-source licence. The weights, the model architecture and the usage information are all publicly available. Training used well under 10^25 floating point operations.",
       "components": "- Training cluster\n- Public model repository",
       "expected": {
-        "is_ai_system": true,
-        "gpai_relationship": "builds_or_finetunes",
         "gpai_open_source_licence": true,
-        "gpai_training_compute_over_10e25": false
+        "gpai_relationship": "builds_or_finetunes",
+        "gpai_training_compute_over_10e25": false,
+        "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "sole_purpose_scientific_research": false
       },
-      "tier": "MINIMAL"
+      "tier": "MINIMAL",
+      "tier_asserting_case": true
     },
     {
       "id": "ho-nl-fraudepreventie-verzekering",
@@ -106,11 +136,16 @@
       "description": "Een model dat bij onze autoverzekering controleert of een ingediende schadeclaim frauduleus lijkt. Het beoordeelt geen levens- of ziektekostenverzekeringen en bepaalt geen premies.",
       "components": "- Anomaliedetectie op claims\n- Werkbak voor onderzoekers",
       "expected": {
-        "is_ai_system": true,
         "insurance_life_or_health": false,
-        "sectoral_regime": "financial_services"
+        "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "sectoral_regime": "financial_services",
+        "sole_purpose_scientific_research": false
       },
-      "tier": null
+      "tier": null,
+      "tier_asserting_case": false
     },
     {
       "id": "ho-en-cctv-verification",
@@ -119,13 +154,18 @@
       "description": "A face check at the server room door. It compares the person in front of the camera with the photo on their own staff record, purely to confirm they are who they claim to be before unlocking. It never searches a crowd or identifies unknown people.",
       "components": "- Door camera\n- One-to-one face match against the employee record",
       "expected": {
-        "is_ai_system": true,
+        "biometric_verification_only": true,
         "high_risk_domains": [
           "biometrics"
         ],
-        "biometric_verification_only": true
+        "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "sole_purpose_scientific_research": false
       },
-      "tier": null
+      "tier": null,
+      "tier_asserting_case": false
     },
     {
       "id": "ho-fr-modele-recherche",
@@ -135,9 +175,13 @@
       "components": "- Environnement de recherche\n- Données anonymisées",
       "expected": {
         "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
         "sole_purpose_scientific_research": true
       },
-      "tier": "OUT_OF_SCOPE"
+      "tier": "OUT_OF_SCOPE",
+      "tier_asserting_case": true
     },
     {
       "id": "ho-en-us-saas-eu-customers",
@@ -146,11 +190,16 @@
       "description": "A US company runs a ticket-routing model in its own data centres. Its European subsidiaries and customers receive and act on the routing decisions in Germany and France every day.",
       "components": "- Routing classifier\n- Global ticketing platform",
       "expected": {
-        "is_ai_system": true,
         "established_outside_eu": true,
-        "output_used_in_eu": true
+        "is_ai_system": true,
+        "military_defence_national_security": false,
+        "output_used_in_eu": true,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "sole_purpose_scientific_research": false
       },
-      "tier": null
+      "tier": null,
+      "tier_asserting_case": false
     },
     {
       "id": "ho-es-vigilancia-masiva",
@@ -160,10 +209,15 @@
       "components": "- Cámaras urbanas\n- Identificación biométrica en tiempo real",
       "expected": {
         "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "rbi_permitted_objective": "none",
         "realtime_remote_biometric_id_public_le": true,
-        "rbi_permitted_objective": "none"
+        "sole_purpose_scientific_research": false
       },
-      "tier": "PROHIBITED"
+      "tier": "PROHIBITED",
+      "tier_asserting_case": true
     },
     {
       "id": "ho-en-hr-promotion",
@@ -172,15 +226,20 @@
       "description": "A tool our HR department uses to decide which employees are put forward for promotion, scoring them on performance data and manager notes.",
       "components": "- Scoring model on performance data\n- HR review screen",
       "expected": {
-        "is_ai_system": true,
+        "developed_or_commissioned": false,
         "high_risk_domains": [
           "employment"
         ],
+        "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
         "profiling": true,
-        "uses_under_own_authority": true,
-        "developed_or_commissioned": false
+        "sole_purpose_scientific_research": false,
+        "uses_under_own_authority": true
       },
-      "tier": "ANNEX_III"
+      "tier": "ANNEX_III",
+      "tier_asserting_case": true
     },
     {
       "id": "ho-nl-chatbot-duidelijk",
@@ -189,12 +248,17 @@
       "description": "Een chatbot op de website van de gemeente die vragen over afvalophaling beantwoordt. Bovenaan het venster staat duidelijk 'automatische assistent — u spreekt niet met een medewerker'.",
       "components": "- Chatwidget\n- Kennisbank",
       "expected": {
-        "is_ai_system": true,
-        "interacts_with_people": true,
         "ai_interaction_obvious": true,
-        "public_body_or_public_service": true
+        "interacts_with_people": true,
+        "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "public_body_or_public_service": true,
+        "sole_purpose_scientific_research": false
       },
-      "tier": "MINIMAL"
+      "tier": "MINIMAL",
+      "tier_asserting_case": true
     },
     {
       "id": "ho-en-grammar-tool",
@@ -203,10 +267,15 @@
       "description": "An add-in that fixes punctuation and tightens sentences our analysts have already written. It performs standard editing only and does not change the substance or meaning of the text.",
       "components": "- Editing model\n- Word add-in",
       "expected": {
+        "assistive_or_no_substantial_alteration": true,
         "is_ai_system": true,
-        "assistive_or_no_substantial_alteration": true
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "sole_purpose_scientific_research": false
       },
-      "tier": null
+      "tier": null,
+      "tier_asserting_case": false
     },
     {
       "id": "ho-fr-deepfake-consentement",
@@ -215,12 +284,17 @@
       "description": "Un outil de production qui remplace le visage d'un acteur par celui d'un autre dans des publicités. Les vidéos diffusées sont manipulées et le public ne peut pas le deviner.",
       "components": "- Modèle de substitution de visage\n- Chaîne de montage vidéo",
       "expected": {
-        "is_ai_system": true,
         "deepfake_content": true,
         "generates_synthetic_content": true,
+        "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "sole_purpose_scientific_research": false,
         "uses_under_own_authority": true
       },
-      "tier": "LIMITED"
+      "tier": "LIMITED",
+      "tier_asserting_case": true
     },
     {
       "id": "ho-en-rule-based-router",
@@ -229,9 +303,14 @@
       "description": "A fixed set of if-then rules written by our support manager that files tickets into queues by keyword. It does not learn from data and produces the same output for the same input every time, by design.",
       "components": "- Keyword rule table\n- Ticketing integration",
       "expected": {
-        "is_ai_system": false
+        "is_ai_system": false,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "sole_purpose_scientific_research": false
       },
-      "tier": "NOT_AI"
+      "tier": "NOT_AI",
+      "tier_asserting_case": true
     },
     {
       "id": "ho-es-importador",
@@ -240,13 +319,18 @@
       "description": "Nuestra empresa española introduce en el mercado europeo un sistema de selección de personal fabricado por una compañía canadiense. El producto lleva la marca del fabricante canadiense, no la nuestra.",
       "components": "- Acuerdo de distribución\n- Soporte local",
       "expected": {
-        "is_ai_system": true,
         "high_risk_domains": [
           "employment"
         ],
-        "imports_from_third_country": true
+        "imports_from_third_country": true,
+        "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "sole_purpose_scientific_research": false
       },
-      "tier": "ANNEX_III"
+      "tier": "ANNEX_III",
+      "tier_asserting_case": true
     },
     {
       "id": "ho-en-emotion-callcentre",
@@ -255,12 +339,17 @@
       "description": "A system in our call centre that infers the emotional state of our own agents during calls, and reports to team leaders who is becoming frustrated or disengaged. It is used for performance management.",
       "components": "- Voice emotion model\n- Team leader dashboard",
       "expected": {
-        "is_ai_system": true,
-        "emotion_recognition": true,
         "emotion_context": "workplace_education",
-        "emotion_medical_or_safety_purpose": false
+        "emotion_medical_or_safety_purpose": false,
+        "emotion_recognition": true,
+        "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "sole_purpose_scientific_research": false
       },
-      "tier": "PROHIBITED"
+      "tier": "PROHIBITED",
+      "tier_asserting_case": true
     },
     {
       "id": "ho-nl-persoonlijk-gebruik",
@@ -270,9 +359,13 @@
       "components": "- App op de telefoon",
       "expected": {
         "is_ai_system": true,
-        "personal_non_professional_use": true
+        "military_defence_national_security": false,
+        "personal_non_professional_use": true,
+        "prerelease_research_testing": false,
+        "sole_purpose_scientific_research": false
       },
-      "tier": "OUT_OF_SCOPE"
+      "tier": "OUT_OF_SCOPE",
+      "tier_asserting_case": true
     },
     {
       "id": "ho-en-defence-only",
@@ -282,9 +375,13 @@
       "components": "- Classified network\n- Sensor fusion model",
       "expected": {
         "is_ai_system": true,
-        "military_defence_national_security": true
+        "military_defence_national_security": true,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "sole_purpose_scientific_research": false
       },
-      "tier": "OUT_OF_SCOPE"
+      "tier": "OUT_OF_SCOPE",
+      "tier_asserting_case": true
     },
     {
       "id": "ho2-en-nudify-app",
@@ -293,14 +390,19 @@
       "description": "A consumer app whose entire selling point is taking an ordinary photo of a real person and producing a realistic nude image of them. Subjects are not asked and do not know.",
       "components": "- Image generation model\n- Mobile app\n- Photo upload",
       "expected": {
-        "is_ai_system": true,
-        "generates_intimate_or_sexual_imagery": true,
-        "prohibited_generation_is_intended_purpose": true,
         "depicted_person_consented": false,
         "developed_or_commissioned": true,
+        "generates_intimate_or_sexual_imagery": true,
+        "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "prohibited_generation_is_intended_purpose": true,
+        "sole_purpose_scientific_research": false,
         "supplied_under_own_name": true
       },
-      "tier": "PROHIBITED"
+      "tier": "PROHIBITED",
+      "tier_asserting_case": true
     },
     {
       "id": "ho2-en-general-image-model-safeguarded",
@@ -309,14 +411,19 @@
       "description": "A general-purpose image generation model we build and sell for marketing and design work. Producing sexual imagery of real people is not what it is for, and we run input and output classifiers that block such prompts and results, plus a reporting channel we act on.",
       "components": "- Diffusion model\n- Prompt and output safety classifiers\n- Abuse reporting workflow",
       "expected": {
-        "is_ai_system": true,
-        "generates_synthetic_content": true,
-        "prohibited_generation_is_intended_purpose": false,
-        "has_technical_safeguards_against_misuse": true,
         "developed_or_commissioned": true,
+        "generates_synthetic_content": true,
+        "has_technical_safeguards_against_misuse": true,
+        "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "prohibited_generation_is_intended_purpose": false,
+        "sole_purpose_scientific_research": false,
         "supplied_under_own_name": true
       },
-      "tier": null
+      "tier": null,
+      "tier_asserting_case": false
     },
     {
       "id": "ho2-fr-retouche-neutre",
@@ -325,10 +432,15 @@
       "description": "Un outil de retouche qui corrige la luminosité et les couleurs des photos de mode. Il ne peut pas dénuder un sujet ni modifier la nature d'une scène ; il ajuste uniquement l'exposition et les teintes.",
       "components": "- Correction colorimétrique\n- Plugin de retouche",
       "expected": {
+        "generates_intimate_or_sexual_imagery": false,
         "is_ai_system": true,
-        "generates_intimate_or_sexual_imagery": false
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "sole_purpose_scientific_research": false
       },
-      "tier": null
+      "tier": null,
+      "tier_asserting_case": false
     },
     {
       "id": "ho2-es-moderacion-contenido",
@@ -337,11 +449,16 @@
       "description": "Un sistema que una plataforma usa para detectar y eliminar material de abuso sexual infantil subido por usuarios. No genera ese material: lo identifica para retirarlo y denunciarlo.",
       "components": "- Clasificador de detección\n- Cola de revisión y denuncia",
       "expected": {
-        "is_ai_system": true,
         "generates_child_sexual_abuse_material": false,
+        "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "sole_purpose_scientific_research": false,
         "uses_under_own_authority": true
       },
-      "tier": null
+      "tier": null,
+      "tier_asserting_case": false
     },
     {
       "id": "ho2-nl-marketing-op-llm",
@@ -350,12 +467,17 @@
       "description": "Wij verkopen onder onze eigen naam een marketingtool aan bedrijven. De tool draait op een taalmodel dat wij bij een externe aanbieder afnemen; wij trainen het niet en passen de gewichten niet aan.",
       "components": "- Extern taalmodel via licentie\n- Onze eigen webapplicatie",
       "expected": {
-        "is_ai_system": true,
-        "gpai_relationship": "integrates_distributes",
         "developed_or_commissioned": true,
+        "gpai_relationship": "integrates_distributes",
+        "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "sole_purpose_scientific_research": false,
         "supplied_under_own_name": true
       },
-      "tier": null
+      "tier": null,
+      "tier_asserting_case": false
     },
     {
       "id": "ho2-en-frontier-lab",
@@ -364,12 +486,17 @@
       "description": "We are an AI lab. We pre-train Atlas-1 ourselves on a very large corpus using more than 10^25 floating point operations, and license it to enterprises. We are headquartered in California.",
       "components": "- Large training cluster\n- Model API for enterprise customers",
       "expected": {
-        "is_ai_system": true,
+        "established_outside_eu": true,
         "gpai_relationship": "builds_or_finetunes",
         "gpai_training_compute_over_10e25": true,
-        "established_outside_eu": true
+        "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "sole_purpose_scientific_research": false
       },
-      "tier": null
+      "tier": null,
+      "tier_asserting_case": false
     },
     {
       "id": "ho2-en-forensic-tool",
@@ -378,11 +505,16 @@
       "description": "A tool used by a national police forensic unit, under an explicit statutory authorisation, that reconstructs illegal imagery from partial evidence for the purpose of investigating and prosecuting child abuse offences.",
       "components": "- Reconstruction model\n- Restricted forensic workstation",
       "expected": {
-        "is_ai_system": true,
         "csam_without_right_defence": true,
+        "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "sole_purpose_scientific_research": false,
         "uses_under_own_authority": true
       },
-      "tier": null
+      "tier": null,
+      "tier_asserting_case": false
     },
     {
       "id": "ho2-de-videostudio-deployer",
@@ -391,12 +523,17 @@
       "description": "An advertising agency licenses a face-swapping tool. They use it only to swap in the faces of actors who signed consent forms, for clothed commercial shoots. They never use it to produce intimate or sexual imagery.",
       "components": "- Licensed face-swap tool\n- Editing suite",
       "expected": {
-        "is_ai_system": true,
         "deployer_uses_for_prohibited_purpose": false,
-        "uses_under_own_authority": true,
-        "developed_or_commissioned": false
+        "developed_or_commissioned": false,
+        "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "sole_purpose_scientific_research": false,
+        "uses_under_own_authority": true
       },
-      "tier": null
+      "tier": null,
+      "tier_asserting_case": false
     },
     {
       "id": "ho2-en-voice-clone-consent",
@@ -405,11 +542,16 @@
       "description": "A studio tool that clones an actor's voice for dubbing. Every actor signs an explicit, specific written consent before their voice is cloned, and the output is ordinary dialogue.",
       "components": "- Voice cloning model\n- Consent register",
       "expected": {
-        "is_ai_system": true,
+        "generates_intimate_or_sexual_imagery": false,
         "generates_synthetic_content": true,
-        "generates_intimate_or_sexual_imagery": false
+        "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "sole_purpose_scientific_research": false
       },
-      "tier": null
+      "tier": null,
+      "tier_asserting_case": false
     },
     {
       "id": "ho2-nl-hr-tool-eigen-bouw",
@@ -418,15 +560,20 @@
       "description": "Wij hebben zelf een sollicitatieportaal gebouwd dat kandidaten rangschikt. Het draait op een ingekocht taalmodel dat wij niet hebben getraind. Wij gebruiken het portaal alleen intern voor onze eigen vacatures.",
       "components": "- Zelfgebouwd portaal\n- Ingekocht taalmodel",
       "expected": {
-        "is_ai_system": true,
+        "developed_or_commissioned": true,
+        "gpai_relationship": "integrates_distributes",
         "high_risk_domains": [
           "employment"
         ],
-        "developed_or_commissioned": true,
-        "uses_under_own_authority": true,
-        "gpai_relationship": "integrates_distributes"
+        "is_ai_system": true,
+        "military_defence_national_security": false,
+        "personal_non_professional_use": false,
+        "prerelease_research_testing": false,
+        "sole_purpose_scientific_research": false,
+        "uses_under_own_authority": true
       },
-      "tier": "ANNEX_III"
+      "tier": "ANNEX_III",
+      "tier_asserting_case": true
     }
   ]
 }

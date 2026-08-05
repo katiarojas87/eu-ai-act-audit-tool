@@ -106,6 +106,29 @@ def wilson(successes: int, n: int, z: float = 1.96) -> tuple[float, float]:
     return (max(0.0, centre - half), min(1.0, centre + half))
 
 
+def observations_needed(successes: int, n: int, limit: float, ceiling: bool,
+                        cap: int = 5000) -> int | None:
+    """How many MORE clean observations would move this gate from unproven to proven.
+
+    Assumes every additional observation is a success (for a floor) or a
+    non-failure (for a ceiling) — the best case. So this is a lower bound on the
+    annotation still required, which is the number worth planning against:
+    "0 under-warnings in 17 cases" needs far more evidence than it looks, and
+    turning that into a concrete case count is what makes it schedulable rather
+    than aspirational. Returns None if the gate cannot be reached even at `cap`
+    (which means the observed failures already rule it out).
+    """
+    extra = 0
+    while extra <= cap:
+        total = n + extra
+        succ = successes if ceiling else successes + extra
+        lo, hi = wilson(succ, total)
+        if (hi <= limit) if ceiling else (lo >= limit):
+            return extra
+        extra += 1
+    return None
+
+
 def fmt_ci(successes: int, n: int) -> str:
     """'95.3% (95% CI 87.0-98.4%, n=64)' — the only honest way to print a rate."""
     if n <= 0:
@@ -127,25 +150,123 @@ def obligation_keys(assessment) -> set[str]:
     return {f"{o.role}:{o.article}" for o in assessment.obligations if o.article}
 
 
+# Missing and extra duties are not symmetric failures, so the headline score is
+# not F1. A duty omitted is a compliance gap the client never learns about; a
+# duty added wastes their money and some credibility. F2 weights recall four
+# times precision, which is the closest simple encoding of "under-warning is
+# worse". F1 is reported alongside it because people expect to see it.
+OBLIGATION_BETA = 2.0
+
+
+def _fbeta(precision: float, recall: float, beta: float) -> float:
+    if precision <= 0 and recall <= 0:
+        return 0.0
+    b2 = beta * beta
+    denom = b2 * precision + recall
+    return (1 + b2) * precision * recall / denom if denom else 0.0
+
+
 def score_obligations(expected: set[str], actual: set[str]) -> dict:
     """Compare two duty sets.
 
     `missing` is the one that matters: a duty the client owes and was not told
-    about. `extra` costs them money and credibility but not compliance.
+    about — the obligation-level equivalent of under-warning a tier. `extra`
+    costs them money and credibility but not compliance.
     """
     missing = sorted(expected - actual)
     extra = sorted(actual - expected)
     hit = len(expected & actual)
+    recall = hit / len(expected) if expected else 1.0
+    precision = hit / len(actual) if actual else 1.0
     return {
         "expected": len(expected),
         "actual": len(actual),
         "correct": hit,
         "missing": missing,
         "extra": extra,
-        "recall": hit / len(expected) if expected else 1.0,
-        "precision": hit / len(actual) if actual else 1.0,
+        "recall": recall,
+        "precision": precision,
+        "f1": _fbeta(precision, recall, 1.0),
+        # Headline: recall-weighted, because omitting a duty is the costly error.
+        "f2": _fbeta(precision, recall, OBLIGATION_BETA),
+        # Share of owed duties the client was never told about.
+        "under_warning_rate": len(missing) / len(expected) if expected else 0.0,
+        "over_warning_rate": len(extra) / len(actual) if actual else 0.0,
         "exact": not missing and not extra,
     }
+
+
+def aggregate_obligations(pairs: list[tuple[set[str], set[str]]]) -> dict:
+    """Micro-averaged duty metrics over many cases, plus per-slice breakdowns.
+
+    Micro rather than macro: a case with 16 provider duties should weigh more
+    than one with a single Art. 4 line, because that is how the errors land on
+    clients.
+    """
+    exp_total = act_total = hit_total = 0
+    all_missing: list[str] = []
+    all_extra: list[str] = []
+    exact = 0
+    for expected, actual in pairs:
+        exp_total += len(expected)
+        act_total += len(actual)
+        hit_total += len(expected & actual)
+        all_missing += sorted(expected - actual)
+        all_extra += sorted(actual - expected)
+        exact += int(expected == actual)
+
+    recall = hit_total / exp_total if exp_total else 1.0
+    precision = hit_total / act_total if act_total else 1.0
+    return {
+        "cases": len(pairs),
+        "expected": exp_total, "actual": act_total, "correct": hit_total,
+        "recall": recall, "precision": precision,
+        "f1": _fbeta(precision, recall, 1.0),
+        "f2": _fbeta(precision, recall, OBLIGATION_BETA),
+        "under_warning_rate": len(all_missing) / exp_total if exp_total else 0.0,
+        "over_warning_rate": len(all_extra) / act_total if act_total else 0.0,
+        "exact_cases": exact,
+        "exact_rate": exact / len(pairs) if pairs else 1.0,
+        "missing": all_missing, "extra": all_extra,
+        "ci": {
+            "recall": wilson(hit_total, exp_total),
+            "precision": wilson(hit_total, act_total),
+            "exact_rate": wilson(exact, len(pairs)),
+        },
+        "display": {
+            "recall": fmt_ci(hit_total, exp_total),
+            "precision": fmt_ci(hit_total, act_total),
+            "exact_rate": fmt_ci(exact, len(pairs)),
+        },
+    }
+
+
+def slice_obligations(pairs: list[tuple[set[str], set[str]]], by: str) -> dict:
+    """Break duty errors down by 'role' or 'article'.
+
+    Keys are "role:article"; a duty is attributed to whichever half `by` names.
+    This is what turns "recall is 96%" into "we systematically drop Art. 27 for
+    deployers", which is the only form an engineer can act on.
+    """
+    idx = 0 if by == "role" else 1
+    out: dict[str, dict] = {}
+    for expected, actual in pairs:
+        for key in expected | actual:
+            slot = key.split(":", 1)[idx] if ":" in key else key
+            s = out.setdefault(slot, {"expected": 0, "actual": 0, "correct": 0,
+                                      "missing": 0, "extra": 0})
+            in_e, in_a = key in expected, key in actual
+            s["expected"] += int(in_e)
+            s["actual"] += int(in_a)
+            s["correct"] += int(in_e and in_a)
+            s["missing"] += int(in_e and not in_a)
+            s["extra"] += int(in_a and not in_e)
+    for s in out.values():
+        s["recall"] = s["correct"] / s["expected"] if s["expected"] else 1.0
+        s["precision"] = s["correct"] / s["actual"] if s["actual"] else 1.0
+        s["f2"] = _fbeta(s["precision"], s["recall"], OBLIGATION_BETA)
+    return dict(sorted(out.items(), key=lambda kv: (-kv[1]["missing"],
+                                                    -kv[1]["extra"])))
 
 
 # Tiers ordered by how much compliance work they imply. Predicting a tier below
@@ -277,7 +398,11 @@ def threshold_verdicts(summary: dict) -> list[dict]:
             verdict = "fail" if actual > limit else ("pass" if hi <= limit else "unproven")
         else:
             verdict = "fail" if actual < limit else ("pass" if lo >= limit else "unproven")
+        needed = (observations_needed(successes[metric], denom, limit,
+                                      _is_ceiling(metric))
+                  if verdict == "unproven" else 0)
         out.append({"metric": metric, "actual": actual, "limit": limit,
                     "lo": lo, "hi": hi, "n": denom, "verdict": verdict,
+                    "needed": needed,
                     "display": fmt_ci(successes[metric], denom)})
     return out
