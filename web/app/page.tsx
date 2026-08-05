@@ -185,6 +185,12 @@ export default function Page() {
             <h2>Assess a system</h2>
             <p className="hint">One system at a time. More detail → sharper analysis.</p>
 
+            <div className="notice">
+              What you type here is sent to the Anthropic API to extract the facts
+              and assess gaps. Classification itself runs locally on a rule engine.
+              Do not paste personal data, and tell your client where their
+              description goes.
+            </div>
             <div className="field">
               <label htmlFor="pw">Access password</label>
               <input id="pw" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Shared password" />

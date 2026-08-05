@@ -175,3 +175,117 @@ def test_every_expected_field_exists_on_the_facts_model():
 def test_golden_set_is_valid_json_with_a_readme():
     data = json.loads(Path(GOLDEN).read_text(encoding="utf-8"))
     assert "_readme" in data and data["cases"]
+
+
+# --- uncertainty ---------------------------------------------------------------
+# A point estimate on 64 observations is not a measurement. These guard the
+# reporting discipline that keeps the accuracy claim defensible.
+def test_wilson_interval_brackets_the_estimate():
+    from eval.score import wilson
+    lo, hi = wilson(61, 64)
+    assert lo < 61 / 64 < hi
+    assert 0.0 <= lo and hi <= 1.0
+
+
+def test_wilson_is_not_zero_width_at_the_extremes():
+    """0/64 wrong must not be reported as a certainty."""
+    from eval.score import wilson
+    lo, hi = wilson(0, 64)
+    assert lo == 0.0 and hi > 0.03
+
+
+def test_wilson_interval_narrows_as_the_sample_grows():
+    from eval.score import wilson
+    small = wilson(19, 20)
+    large = wilson(950, 1000)
+    assert (large[1] - large[0]) < (small[1] - small[0])
+
+
+def test_wilson_handles_empty_sample():
+    from eval.score import wilson
+    assert wilson(0, 0) == (0.0, 1.0)
+
+
+def test_fmt_ci_reports_the_denominator():
+    from eval.score import fmt_ci
+    out = fmt_ci(61, 64)
+    assert "n=64" in out and "95% CI" in out
+
+
+def test_aggregate_carries_intervals_and_denominators():
+    s = aggregate([_case(["correct", "wrong", "abstained"], "exact")])
+    assert s["n"]["fields"] == 3
+    lo, hi = s["ci"]["field_accuracy"]
+    assert lo < s["field_accuracy"] < hi
+    assert "n=3" in s["display"]["field_accuracy"]
+
+
+# --- threshold verdicts --------------------------------------------------------
+def test_small_sample_that_clears_the_target_is_unproven_not_passed():
+    """The exact failure mode this project had: 95.3% on n=64 read as PASS."""
+    from eval.score import threshold_verdicts
+    summary = {
+        "field_accuracy": 0.953, "wrong_rate": 0.016,
+        "tier_exact": 1.0, "tier_under_warned": 0.0,
+        "counts": {"correct": 61, "abstained": 2, "wrong": 1},
+        "tier_counts": {"exact": 15, "under_warned": 0, "over_warned": 0},
+        "n": {"fields": 64, "tiers": 15},
+    }
+    v = {x["metric"]: x["verdict"] for x in threshold_verdicts(summary)}
+    assert v["field_accuracy"] == "unproven"   # CI reaches below the 90% gate
+    assert v["wrong_rate"] == "unproven"       # CI reaches above the 5% ceiling
+
+
+def test_large_clean_sample_passes():
+    from eval.score import threshold_verdicts
+    summary = {
+        "field_accuracy": 0.99, "wrong_rate": 0.0,
+        "tier_exact": 0.99, "tier_under_warned": 0.0,
+        "counts": {"correct": 1980, "abstained": 20, "wrong": 0},
+        "tier_counts": {"exact": 990, "under_warned": 0, "over_warned": 0},
+        "n": {"fields": 2000, "tiers": 1000},
+    }
+    assert all(x["verdict"] == "pass" for x in threshold_verdicts(summary))
+
+
+def test_point_estimate_on_the_wrong_side_is_a_fail():
+    from eval.score import threshold_verdicts
+    summary = {
+        "field_accuracy": 0.50, "wrong_rate": 0.40,
+        "tier_exact": 0.50, "tier_under_warned": 0.30,
+        "counts": {"correct": 50, "abstained": 10, "wrong": 40},
+        "tier_counts": {"exact": 50, "under_warned": 30, "over_warned": 20},
+        "n": {"fields": 100, "tiers": 100},
+    }
+    assert all(x["verdict"] == "fail" for x in threshold_verdicts(summary))
+
+
+# --- obligation-level scoring --------------------------------------------------
+def test_dropped_duty_is_caught_as_missing():
+    """A correct tier that silently drops Art. 27 is a failed audit."""
+    from eval.score import score_obligations
+    expected = {"deployer:Art. 26(1)", "deployer:Art. 27", "all:Art. 4"}
+    actual = {"deployer:Art. 26(1)", "all:Art. 4"}
+    s = score_obligations(expected, actual)
+    assert s["missing"] == ["deployer:Art. 27"]
+    assert s["recall"] < 1.0 and s["precision"] == 1.0
+    assert not s["exact"]
+
+
+def test_duties_are_keyed_by_role():
+    """provider:Art. 27 and deployer:Art. 27 are different claims about the law."""
+    from eval.score import score_obligations
+    s = score_obligations({"deployer:Art. 27"}, {"provider:Art. 27"})
+    assert s["missing"] == ["deployer:Art. 27"]
+    assert s["extra"] == ["provider:Art. 27"]
+
+
+def test_obligation_keys_reflect_the_engine():
+    from eval.score import obligation_keys
+    from rules import classify
+    a = classify(Facts(is_ai_system=True, high_risk_domains=["employment"],
+                       placed_on_eu_market=True, developed_or_commissioned=True,
+                       supplied_under_own_name=True), "x")
+    keys = obligation_keys(a)
+    assert "provider:Art. 9" in keys
+    assert all(":" in k for k in keys)

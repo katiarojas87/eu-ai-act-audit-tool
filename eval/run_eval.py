@@ -30,7 +30,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from eval.score import (  # noqa: E402
-    aggregate, check_thresholds, score_case, tier_verdict,
+    aggregate, check_thresholds, score_case, threshold_verdicts, tier_verdict,
 )
 from rules import classify  # noqa: E402
 from schema import Facts  # noqa: E402
@@ -131,15 +131,16 @@ def _print_summary(summary: dict, per_case: list[dict]) -> None:
           f"{summary['fields_scored']} labelled fields")
     print("=" * 72)
     c = summary["counts"]
-    print(f"  correct    {c['correct']:4}   {summary['field_accuracy']:6.1%}")
+    disp = summary.get("display", {})
+    print(f"  correct    {c['correct']:4}   {disp.get('field_accuracy', '')}")
     print(f"  abstained  {c['abstained']:4}   {summary['abstention_rate']:6.1%}"
           "   (left unknown — becomes a follow-up question)")
-    print(f"  wrong      {c['wrong']:4}   {summary['wrong_rate']:6.1%}"
+    print(f"  wrong      {c['wrong']:4}   {disp.get('wrong_rate', '')}"
           "   (asserted something untrue)")
 
     tc = summary["tier_counts"]
     print(f"\nEND-TO-END TIER  ({sum(tc.values())} cases assert a tier)")
-    print(f"  exact         {tc['exact']:4}   {summary['tier_exact']:6.1%}")
+    print(f"  exact         {tc['exact']:4}   {disp.get('tier_exact', '')}")
     print(f"  under-warned  {tc['under_warned']:4}   {summary['tier_under_warned']:6.1%}"
           "   (client told they owe LESS than they do)")
     print(f"  over-warned   {tc['over_warned']:4}   {summary['tier_over_warned']:6.1%}")
@@ -151,10 +152,21 @@ def _print_summary(summary: dict, per_case: list[dict]) -> None:
             print(f"  {field:42} wrong={s['wrong']:2} abstained={s['abstained']:2} "
                   f"correct={s['correct']:2}")
 
-    print("\nTHRESHOLDS")
-    for metric, actual, limit, passed in check_thresholds(summary):
-        print(f"  {'PASS' if passed else 'FAIL'}  {metric:20} "
-              f"{actual:6.1%}  (target {limit:.0%})")
+    # Gates are judged against the interval, not the point estimate: on samples
+    # this size an estimate can clear a threshold while the interval straddles
+    # it, and reporting that as PASS is how the accuracy claim becomes
+    # indefensible the moment someone checks the arithmetic.
+    print("\nTHRESHOLDS  (judged on the confidence interval, not the estimate)")
+    verdicts = threshold_verdicts(summary)
+    for v in verdicts:
+        mark = {"pass": "PASS    ", "unproven": "UNPROVEN", "fail": "FAIL    "}[v["verdict"]]
+        print(f"  {mark}  {v['metric']:20} {v['display']}  (target {v['limit']:.0%})")
+
+    unproven = [v["metric"] for v in verdicts if v["verdict"] == "unproven"]
+    if unproven:
+        print(f"\n  {len(unproven)} gate(s) UNPROVEN: {', '.join(unproven)}")
+        print("  The estimate clears the target but the sample is too small to show")
+        print("  it. Add cases — do NOT report these as met.")
 
     misses = [c for c in per_case if c.get("tier_verdict") == "under_warned"]
     if misses:
