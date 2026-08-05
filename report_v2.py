@@ -121,6 +121,11 @@ def _recommended_actions(a: Assessment) -> list[str]:
     if a.is_gpai:
         acts.append("Prepare GPAI model documentation, a copyright-compliance policy and a "
                     "public training-data summary.")
+    elif a.gpai.result == "Downstream":
+        acts.append("No Article 53 model obligations apply to you — those bind the "
+                    "provider of the model you build on (Art. 3(68)). Obtain from them "
+                    "the information and documentation Art. 53(1)(b) requires them to "
+                    "supply, since you need it for your own system's compliance.")
     if a.missing_information:
         acts.append("Confirm the missing facts listed above before finalising the classification.")
     if not acts:
@@ -209,7 +214,9 @@ def generate_report(client_name: str, assessments: list[Assessment],
 
         S.append(Paragraph("Triggered rules", H2))
         for c, lbl in [(a.prohibited_practice, "Prohibited"), (a.high_risk, "High-risk"),
-                       (a.transparency, "Transparency"), (a.gpai, "GPAI")]:
+                       (a.transparency, "Transparency"),
+                       (a.gpai, "GPAI — downstream provider"
+                        if a.gpai.result == "Downstream" else "GPAI")]:
             if c.result not in ("No", "Unclear"):
                 S.append(Paragraph(f"• <b>{lbl}:</b> {c.detail} "
                                    f"<font color='{MUTE.hexval()}'>({', '.join(c.articles)})</font> "

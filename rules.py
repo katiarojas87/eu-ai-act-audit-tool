@@ -35,6 +35,9 @@ DATE_TRANSPARENCY = "2 August 2026"
 DATE_ANNEX_III = "2 December 2027"
 DATE_ANNEX_I = "2 August 2028"
 DATE_AI_LITERACY = "2 February 2025 (in force)"
+# Art. 5(1)(ba)/(bb) and Art. 5(1a)/(1b) were inserted by the Digital Omnibus and
+# apply later than the rest of Chapter II — Art. 113(a).
+DATE_NEW_PROHIBITIONS = "2 December 2026"
 
 # What each date rests on, so the report never states a deadline it cannot source.
 DATE_BASIS: dict[str, tuple[str, str]] = {
@@ -47,6 +50,9 @@ DATE_BASIS: dict[str, tuple[str, str]] = {
                      "from 2 August 2026", OMNIBUS_URL),
     DATE_ANNEX_I: (f"Art. 113 as amended by Art. 1(40) of {OMNIBUS} — deferred "
                    "from 2 August 2027", OMNIBUS_URL),
+    DATE_NEW_PROHIBITIONS: (
+        f"Art. 113(a) as amended by {OMNIBUS} — the prohibitions inserted as "
+        "Art. 5(1), points (ba) and (bb), and Art. 5(1a) and (1b)", OMNIBUS_URL),
 }
 
 
@@ -59,6 +65,7 @@ DATE_ARTICLE: dict[str, str] = {
     DATE_TRANSPARENCY: "Art. 113",
     DATE_ANNEX_III: "Art. 113(c)",
     DATE_ANNEX_I: "Art. 113(c)",
+    DATE_NEW_PROHIBITIONS: "Art. 113(a)",
 }
 
 
@@ -507,7 +514,107 @@ def _evaluate_rbi(f: Facts) -> tuple[str, str]:
                            "or independent authority (Art. 5(3))")
 
 
-def _evaluate_prohibited(f: Facts) -> Conclusion:
+def _art_5_1a_gate(f: Facts, roles: list[str]) -> tuple[str, str]:
+    """Art. 5(1a): is the conduct caught at all? The test differs by role.
+
+    (a) Providers — placing on the market or putting into service is caught only
+        where generation of the material is the system's intended purpose, or a
+        reasonably foreseeable and reproducible outcome that adequate technical
+        safeguards do not prevent.
+    (b) Deployers — use is caught only where they use the system FOR that purpose.
+
+    Returns (state, note): "caught" | "not_caught" | "unresolved".
+    """
+    is_provider = "provider" in roles or roles == ["unknown"]
+    is_deployer = "deployer" in roles
+
+    if is_deployer and not is_provider:
+        v = f.deployer_uses_for_prohibited_purpose
+        if v is True:
+            return "caught", ("the deployer uses the system for that purpose "
+                              "(Art. 5(1a)(b))")
+        if v is False:
+            return "not_caught", ("the deployer does not use the system for that "
+                                  "purpose, which Art. 5(1a)(b) requires")
+        return "unresolved", ("unless the system is used for the purpose of "
+                              "generating such material (Art. 5(1a)(b))")
+
+    if f.prohibited_generation_is_intended_purpose is True:
+        return "caught", ("generating this material is the system's intended purpose "
+                          "(Art. 5(1a)(a)(i))")
+    if f.prohibited_generation_foreseeable_outcome is True:
+        if f.has_technical_safeguards_against_misuse is True:
+            return "not_caught", ("reasonable and adequate technical safeguards are in "
+                                  "place to prevent and correct such misuse "
+                                  "(Art. 5(1a)(a)(ii))")
+        if f.has_technical_safeguards_against_misuse is False:
+            return "caught", ("a reasonably foreseeable and reproducible outcome with "
+                              "no adequate technical safeguards (Art. 5(1a)(a)(ii))")
+        return "unresolved", ("generation is a reasonably foreseeable outcome; whether "
+                              "adequate technical safeguards prevent and correct it is "
+                              "not established (Art. 5(1a)(a)(ii))")
+    if (f.prohibited_generation_is_intended_purpose is False
+            and f.prohibited_generation_foreseeable_outcome is False):
+        return "not_caught", ("neither the intended purpose nor a reasonably "
+                              "foreseeable outcome (Art. 5(1a)(a))")
+    return "unresolved", ("unless generating such material is the intended purpose, or "
+                          "a reasonably foreseeable and reproducible outcome left "
+                          "without adequate safeguards (Art. 5(1a)(a))")
+
+
+def _generative_context(f: Facts) -> bool:
+    """Whether these prohibitions are worth screening for at all."""
+    return (f.generates_synthetic_content is not False
+            or f.deepfake_content is True
+            or f.gpai_relationship in ("builds_or_finetunes", "integrates_distributes"))
+
+
+def _evaluate_intimate_imagery(f: Facts, roles: list[str]) -> tuple[str, str]:
+    """Art. 5(1)(ba): non-consensual intimate or sexually explicit imagery."""
+    if f.generates_intimate_or_sexual_imagery is False:
+        return "clear", ""
+    if f.generates_intimate_or_sexual_imagery is None:
+        return ("unknown", "") if _generative_context(f) else ("clear", "")
+
+    # Art. 5(1b) first: some manipulation is not "manipulation" at all.
+    if f.manipulation_alters_intimate_exposure is False:
+        return "exempt", ("Art. 5(1b): manipulation that neither increases the exposure "
+                          "of depicted intimate parts nor alters the nature of depicted "
+                          "sexually explicit activities is not manipulation")
+    if f.depicted_person_consented is True:
+        return "exempt", ("the depicted person gave freely-given, specific, informed, "
+                          "unambiguous and explicit consent")
+
+    state, note = _art_5_1a_gate(f, roles)
+    if state == "not_caught":
+        return "exempt", note
+    if state == "unresolved":
+        return "conditional", note
+    if f.depicted_person_consented is None:
+        return "conditional", (note + "; and the depicted person's explicit consent is "
+                                      "not established")
+    return "hit", note
+
+
+def _evaluate_csam(f: Facts, roles: list[str]) -> tuple[str, str]:
+    """Art. 5(1)(bb): material within Art. 2(c) and (e) of Directive 2011/93/EU."""
+    if f.generates_child_sexual_abuse_material is False:
+        return "clear", ""
+    if f.generates_child_sexual_abuse_material is None:
+        return ("unknown", "") if _generative_context(f) else ("clear", "")
+
+    if f.csam_without_right_defence is True:
+        return "exempt", ("a 'without right' defence applies under national law "
+                          "(Art. 5(1)(bb))")
+    state, note = _art_5_1a_gate(f, roles)
+    if state == "not_caught":
+        return "exempt", note
+    if state == "unresolved":
+        return "conditional", note
+    return "hit", note
+
+
+def _evaluate_prohibited(f: Facts, roles: list[str] | None = None) -> Conclusion:
     hits, conditional, unknowns, exempt = [], [], [], []
 
     evaluations = [(p.ref, p.label, *_evaluate_one(p, f)) for p in PROHIBITED_RULES]
@@ -516,6 +623,16 @@ def _evaluate_prohibited(f: Facts) -> Conclusion:
     evaluations.append(("Art. 5(1)(h)", "real-time remote biometric identification in "
                         "publicly accessible spaces for law enforcement",
                         *_evaluate_rbi(f)))
+    roles = roles or ["unknown"]
+    evaluations.append(("Art. 5(1)(ba)",
+                        "generating or manipulating realistic intimate or sexually "
+                        "explicit imagery of an identifiable person without their "
+                        "explicit consent",
+                        *_evaluate_intimate_imagery(f, roles)))
+    evaluations.append(("Art. 5(1)(bb)",
+                        "generating or manipulating child sexual abuse material within "
+                        "Directive 2011/93/EU",
+                        *_evaluate_csam(f, roles)))
 
     for ref, label, state, note in evaluations:
         entry = (ref, f"{label} — {note}" if note else label)
@@ -848,18 +965,23 @@ def _obligations_for(tier: str, is_gpai: bool, systemic: bool,
     out: list[Obligation] = []
     if tier == "PROHIBITED":
         conditional = prohibited is not None and prohibited.status == "conditional"
+        # The inserted prohibitions bite later than the rest of Article 5.
+        arts = prohibited.articles if prohibited else []
+        deadline = (DATE_NEW_PROHIBITIONS
+                    if arts and all(a in ("Art. 5(1)(ba)", "Art. 5(1)(bb)") for a in arts)
+                    else DATE_PROHIBITED)
         if conditional:
             out.append(Obligation(
                 obligation="Suspend use and confirm with counsel whether the statutory "
                            "exception applies",
-                deadline=DATE_PROHIBITED, status="needs_confirmation",
+                deadline=deadline, status="needs_confirmation",
                 role="all", article=", ".join(prohibited.articles) or "Art. 5",
                 reasoning=prohibited.detail,
                 gap_question="Can you evidence that the exception applies to this use?"))
         else:
             out.append(Obligation(
                 obligation="Cease use immediately (prohibited practice)",
-                deadline=DATE_PROHIBITED, status="likely_gap",
+                deadline=deadline, status="likely_gap",
                 role="all", article=", ".join(prohibited.articles) if prohibited
                                     else "Art. 5",
                 reasoning=(prohibited.detail if prohibited
@@ -1063,7 +1185,7 @@ def classify(f: Facts, system_name: str = "") -> Assessment:
     roles, role_basis = _derive_roles(f)
     role_basis = _with_sources(role_basis)
 
-    prohibited = _with_sources(_evaluate_prohibited(f))
+    prohibited = _with_sources(_evaluate_prohibited(f, roles))
     high_risk = _with_sources(_evaluate_high_risk(f))
     transparency = _with_sources(_evaluate_transparency(f))
     gpai = _with_sources(_evaluate_gpai(f))

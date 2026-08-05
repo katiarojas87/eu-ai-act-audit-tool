@@ -782,3 +782,112 @@ def test_api_use_creates_no_gpai_obligations():
     a = classify(_gp(gpai_relationship="uses_api"))
     assert a.is_gpai is False
     assert not [o for o in a.obligations if o.article.startswith(("Art. 53", "Art. 55"))]
+
+
+# --- Art. 5(1)(ba)/(bb): prohibitions inserted by the Digital Omnibus ----------
+def _gen(**kw):
+    """A generative system, so the new prohibitions are in scope to screen."""
+    base = dict(is_ai_system=True, placed_on_eu_market=True,
+                generates_synthetic_content=True,
+                generates_intimate_or_sexual_imagery=True,
+                depicted_person_consented=False,
+                manipulation_alters_intimate_exposure=True,
+                developed_or_commissioned=True, supplied_under_own_name=True)
+    base.update(kw)
+    return Facts(**base)
+
+
+def test_intimate_imagery_is_prohibited_where_it_is_the_intended_purpose():
+    a = classify(_gen(prohibited_generation_is_intended_purpose=True))
+    assert a.tier == "PROHIBITED"
+    assert a.prohibited_practice.status == "definitive"
+    assert "Art. 5(1)(ba)" in a.prohibited_practice.articles
+
+
+def test_foreseeable_outcome_without_safeguards_is_prohibited():
+    a = classify(_gen(prohibited_generation_is_intended_purpose=False,
+                      prohibited_generation_foreseeable_outcome=True,
+                      has_technical_safeguards_against_misuse=False))
+    assert a.tier == "PROHIBITED"
+
+
+def test_adequate_safeguards_take_a_general_model_out_of_the_ban():
+    """Art. 5(1a)(a)(ii) — otherwise every image generator would be prohibited."""
+    a = classify(_gen(prohibited_generation_is_intended_purpose=False,
+                      prohibited_generation_foreseeable_outcome=True,
+                      has_technical_safeguards_against_misuse=True))
+    assert a.tier != "PROHIBITED"
+
+
+def test_unknown_safeguards_are_conditional_not_definitive():
+    a = classify(_gen(prohibited_generation_is_intended_purpose=False,
+                      prohibited_generation_foreseeable_outcome=True))
+    assert a.tier == "PROHIBITED"
+    assert a.prohibited_practice.status == "conditional"
+    assert "Suspend use" in " ".join(o.obligation for o in a.obligations)
+
+
+def test_deployer_is_judged_on_use_not_on_capability():
+    """Art. 5(1a)(b): a deployer is caught only if they use it for that purpose."""
+    used = classify(_gen(developed_or_commissioned=False, supplied_under_own_name=None,
+                         uses_under_own_authority=True,
+                         deployer_uses_for_prohibited_purpose=True))
+    assert used.tier == "PROHIBITED"
+
+    not_used = classify(_gen(developed_or_commissioned=False, supplied_under_own_name=None,
+                             uses_under_own_authority=True,
+                             deployer_uses_for_prohibited_purpose=False))
+    assert not_used.tier != "PROHIBITED"
+
+
+def test_consent_defeats_the_intimate_imagery_ban():
+    a = classify(_gen(depicted_person_consented=True,
+                      prohibited_generation_is_intended_purpose=True))
+    assert a.tier != "PROHIBITED"
+
+
+def test_article_5_1b_neutral_manipulation_is_not_manipulation():
+    a = classify(_gen(manipulation_alters_intimate_exposure=False,
+                      prohibited_generation_is_intended_purpose=True))
+    assert a.tier != "PROHIBITED"
+    assert "5(1b)" in a.prohibited_practice.detail
+
+
+def test_csam_prohibition_and_its_without_right_defence():
+    banned = classify(_gen(generates_intimate_or_sexual_imagery=False,
+                           generates_child_sexual_abuse_material=True,
+                           prohibited_generation_is_intended_purpose=True))
+    assert banned.tier == "PROHIBITED"
+    assert "Art. 5(1)(bb)" in banned.prohibited_practice.articles
+
+    defended = classify(_gen(generates_intimate_or_sexual_imagery=False,
+                             generates_child_sexual_abuse_material=True,
+                             csam_without_right_defence=True,
+                             prohibited_generation_is_intended_purpose=True))
+    assert defended.tier != "PROHIBITED"
+
+
+def test_new_prohibitions_carry_their_own_application_date():
+    from rules import DATE_NEW_PROHIBITIONS, date_basis
+    a = classify(_gen(prohibited_generation_is_intended_purpose=True))
+    art5 = [o for o in a.obligations if "Art. 5(1)(ba)" in o.article]
+    assert art5 and art5[0].deadline == DATE_NEW_PROHIBITIONS
+    assert "2026/1744" in date_basis(DATE_NEW_PROHIBITIONS)[0]
+
+
+def test_non_generative_systems_are_not_screened_for_these():
+    """A spam filter must not be asked about intimate imagery."""
+    a = classify(Facts(is_ai_system=True, placed_on_eu_market=True,
+                       generates_synthetic_content=False, interacts_with_people=False,
+                       safety_component_regulated_product=False,
+                       manipulative_or_exploitative=False, social_scoring=False,
+                       uses_under_own_authority=True))
+    assert a.prohibited_practice.result == "No"
+    assert "5(1)(ba)" not in " ".join(a.prohibited_practice.articles)
+
+
+def test_both_new_prohibitions_are_cited_verbatim():
+    from citations import get_source
+    for ref in ("Art. 5(1)(ba)", "Art. 5(1)(bb)"):
+        s = get_source(ref)
+        assert s and s["kind"] == "operative" and len(s["quote"]) > 60

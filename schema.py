@@ -170,6 +170,24 @@ class Facts(BaseModel):
 
     untargeted_facial_scraping: Tri = None           # Art. 5(1)(e): no exception
 
+    # Art. 5(1)(ba) and (bb), inserted by the Digital Omnibus and applying from
+    # 2 December 2026. Both are gated by Art. 5(1a), which asks a DIFFERENT
+    # question of providers (is this the intended purpose, or a foreseeable
+    # outcome left unguarded?) than of deployers (did you use it for that?).
+    generates_intimate_or_sexual_imagery: Tri = None   # 5(1)(ba) trigger
+    depicted_person_consented: Tri = None              # 5(1)(ba) consent element
+    # 5(1b): manipulation that does not increase exposure of intimate parts or
+    # alter the nature of sexually explicit activities is not "manipulation".
+    manipulation_alters_intimate_exposure: Tri = None
+    generates_child_sexual_abuse_material: Tri = None  # 5(1)(bb) trigger
+    csam_without_right_defence: Tri = None             # 5(1)(bb) exception
+    # Art. 5(1a)(a) — the provider limb.
+    prohibited_generation_is_intended_purpose: Tri = None      # (a)(i)
+    prohibited_generation_foreseeable_outcome: Tri = None      # (a)(ii), first limb
+    has_technical_safeguards_against_misuse: Tri = None        # (a)(ii), second limb
+    # Art. 5(1a)(b) — the deployer limb.
+    deployer_uses_for_prohibited_purpose: Tri = None
+
     safety_component_regulated_product: Tri = None   # Annex I
     # Art. 6(3) derogation: only set when the description clearly shows the
     # system does no more than one of these. Defaults to "none" (stays high-risk)

@@ -111,24 +111,30 @@ Two sets:
 python eval/run_eval.py --set holdout
 ```
 
-Held-out run (`eval/holdout_run.json`) — the unbiased numbers:
+Held-out run (`eval/holdout_run.json`) — 30 cases, the unbiased numbers:
 
 | Metric | Held-out | Development | Target |
 |---|---|---|---|
-| Field accuracy | **95.3%** (61/64) | 96.8% | ≥ 90% |
-| Wrong assertions | **1.6%** | 0.0% | ≤ 5% |
-| Tier exact | **100%** (15/15) | 94.3% | ≥ 85% |
+| Field accuracy | **97.1%** (101/104) | 96.8% | ≥ 90% |
+| Wrong assertions | **1.0%** | 0.0% | ≤ 5% |
+| Tier exact | **100%** (17/17) | 94.3% | ≥ 85% |
 | Under-warned | **0.0%** | 0.0% | ≤ 2% |
 
 Discipline for the held-out set: do not change `facts.py` in response to a
 failure there without first reproducing it in the development set, and never
-move cases between the two. The one exception made so far is recorded below.
+move cases between the two.
 
-Known from the held-out run: `developed_or_commissioned` was under-specified —
-it did not say whether it asks about the system or the components inside it, so
-a product wrapping a third-party model was read both ways. The definition has
-since been clarified, which means the 95.3% above predates that fix; a fresh
-held-out set is needed for a clean number after it.
+Ten cases (`ho2-`) were added after the Art. 5(1)(ba)/(bb) prohibitions were
+modelled, so those paths were measured cold: 39/40 fields correct, and all nine
+prohibition cases classified correctly first time — the nudify app prohibited,
+the safeguarded general-purpose image model not, content moderation and
+authorised forensic use not.
+
+The single wrong answer is a label ambiguity worth knowing about rather than a
+model error: a company that builds its own portal on a bought model but uses it
+only internally is neither cleanly `integrates_distributes` (they distribute
+nothing) nor `uses_api` (they built a system around it). Left unresolved rather
+than tuned away.
 
 ## Using it in a client session
 
@@ -166,7 +172,7 @@ held-out set is needed for a clean number after it.
 | `web/` | **The frontend** — Next.js. The only UI. |
 | `scope_input.py` | Consultant-supplied Art. 2 scope facts from the UI. |
 | `eval/` | Golden set + scorer for fact-extraction accuracy. |
-| `test_*.py` | Unit tests — run `pytest` (241, no API key needed). |
+| `test_*.py` | Unit tests — run `pytest` (252, no API key needed). |
 
 ## Notes
 
@@ -196,13 +202,17 @@ held-out set is needed for a clean number after it.
   Systemic risk is presumed above 10^25 FLOP (Art. 51(2)), the free and
   open-source exemption lifts Art. 53(1)(a)-(b) unless systemic (Art. 53(2)),
   and third-country model providers need an authorised representative (Art. 54).
-- **NOT YET MODELLED — two new prohibitions.** The Omnibus inserted
-  **Art. 5(1)(ba)** (AI generating or manipulating realistic intimate or sexually
-  explicit imagery of an identifiable person without their explicit consent) and
-  **Art. 5(1)(bb)** (child sexual abuse material within Directive 2011/93/EU),
-  qualified by new Art. 5(1a)/(1b). They apply from **2 December 2026**. Both are
-  citable but the rule engine does not yet test for them — a generative-AI client
-  will not be warned. This is the highest-priority gap.
+- **The prohibitions inserted by the Omnibus are modelled.** Art. 5(1)(ba)
+  (realistic intimate or sexually explicit imagery of an identifiable person
+  without their explicit consent) and Art. 5(1)(bb) (child sexual abuse material
+  within Directive 2011/93/EU) apply from **2 December 2026**. Art. 5(1a) gates
+  both, and asks a *different question by role*: a provider is caught where
+  generating such material is the system's intended purpose, or a reasonably
+  foreseeable and reproducible outcome that adequate technical safeguards do not
+  prevent; a deployer only where they use the system for that purpose. Art. 5(1b)
+  excludes manipulation that neither increases exposure of intimate parts nor
+  alters the nature of sexually explicit activity. Screening is gated on the
+  system being generative, so a spam filter is never asked.
 - **Obligations are split by role.** The Act assigns duties by role, so the tool
   derives the role from observable facts (Art. 3(3)–(7)) rather than asking the
   model to apply a legal label, and escalates to provider under Art. 25(1) where

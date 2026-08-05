@@ -8,7 +8,8 @@
     "way: do not change facts.py in response to a failure here without first",
     "reproducing it in the development set, and do not add cases from here to it.",
     "",
-    "Run: python eval/run_eval.py --set holdout"
+    "Run: python eval/run_eval.py --set holdout",
+    "Cases prefixed ho2- were added after the Art. 5(1)(ba)/(bb) prohibitions were modelled and after the developed_or_commissioned definition was clarified. Nothing has been tuned against them."
   ],
   "cases": [
     {
@@ -32,7 +33,9 @@
       "components": "- Beoordelingsmodel\n- Leerlingvolgsysteem",
       "expected": {
         "is_ai_system": true,
-        "high_risk_domains": ["education"],
+        "high_risk_domains": [
+          "education"
+        ],
         "uses_under_own_authority": true,
         "public_body_or_public_service": true
       },
@@ -60,7 +63,9 @@
       "components": "- Modelo de clasificación de gravedad\n- Pantalla de triaje",
       "expected": {
         "is_ai_system": true,
-        "high_risk_domains": ["essential_public_services"],
+        "high_risk_domains": [
+          "essential_public_services"
+        ],
         "public_body_or_public_service": true,
         "uses_under_own_authority": true
       },
@@ -115,7 +120,9 @@
       "components": "- Door camera\n- One-to-one face match against the employee record",
       "expected": {
         "is_ai_system": true,
-        "high_risk_domains": ["biometrics"],
+        "high_risk_domains": [
+          "biometrics"
+        ],
         "biometric_verification_only": true
       },
       "tier": null
@@ -166,7 +173,9 @@
       "components": "- Scoring model on performance data\n- HR review screen",
       "expected": {
         "is_ai_system": true,
-        "high_risk_domains": ["employment"],
+        "high_risk_domains": [
+          "employment"
+        ],
         "profiling": true,
         "uses_under_own_authority": true,
         "developed_or_commissioned": false
@@ -232,7 +241,9 @@
       "components": "- Acuerdo de distribución\n- Soporte local",
       "expected": {
         "is_ai_system": true,
-        "high_risk_domains": ["employment"],
+        "high_risk_domains": [
+          "employment"
+        ],
         "imports_from_third_country": true
       },
       "tier": "ANNEX_III"
@@ -274,6 +285,148 @@
         "military_defence_national_security": true
       },
       "tier": "OUT_OF_SCOPE"
+    },
+    {
+      "id": "ho2-en-nudify-app",
+      "lang": "en",
+      "name": "UndressAI",
+      "description": "A consumer app whose entire selling point is taking an ordinary photo of a real person and producing a realistic nude image of them. Subjects are not asked and do not know.",
+      "components": "- Image generation model\n- Mobile app\n- Photo upload",
+      "expected": {
+        "is_ai_system": true,
+        "generates_intimate_or_sexual_imagery": true,
+        "prohibited_generation_is_intended_purpose": true,
+        "depicted_person_consented": false,
+        "developed_or_commissioned": true,
+        "supplied_under_own_name": true
+      },
+      "tier": "PROHIBITED"
+    },
+    {
+      "id": "ho2-en-general-image-model-safeguarded",
+      "lang": "en",
+      "name": "PixelForge",
+      "description": "A general-purpose image generation model we build and sell for marketing and design work. Producing sexual imagery of real people is not what it is for, and we run input and output classifiers that block such prompts and results, plus a reporting channel we act on.",
+      "components": "- Diffusion model\n- Prompt and output safety classifiers\n- Abuse reporting workflow",
+      "expected": {
+        "is_ai_system": true,
+        "generates_synthetic_content": true,
+        "prohibited_generation_is_intended_purpose": false,
+        "has_technical_safeguards_against_misuse": true,
+        "developed_or_commissioned": true,
+        "supplied_under_own_name": true
+      },
+      "tier": null
+    },
+    {
+      "id": "ho2-fr-retouche-neutre",
+      "lang": "fr",
+      "name": "Retouche photo",
+      "description": "Un outil de retouche qui corrige la luminosité et les couleurs des photos de mode. Il ne peut pas dénuder un sujet ni modifier la nature d'une scène ; il ajuste uniquement l'exposition et les teintes.",
+      "components": "- Correction colorimétrique\n- Plugin de retouche",
+      "expected": {
+        "is_ai_system": true,
+        "generates_intimate_or_sexual_imagery": false
+      },
+      "tier": null
+    },
+    {
+      "id": "ho2-es-moderacion-contenido",
+      "lang": "es",
+      "name": "Moderacion de contenidos",
+      "description": "Un sistema que una plataforma usa para detectar y eliminar material de abuso sexual infantil subido por usuarios. No genera ese material: lo identifica para retirarlo y denunciarlo.",
+      "components": "- Clasificador de detección\n- Cola de revisión y denuncia",
+      "expected": {
+        "is_ai_system": true,
+        "generates_child_sexual_abuse_material": false,
+        "uses_under_own_authority": true
+      },
+      "tier": null
+    },
+    {
+      "id": "ho2-nl-marketing-op-llm",
+      "lang": "nl",
+      "name": "Campagnetekst",
+      "description": "Wij verkopen onder onze eigen naam een marketingtool aan bedrijven. De tool draait op een taalmodel dat wij bij een externe aanbieder afnemen; wij trainen het niet en passen de gewichten niet aan.",
+      "components": "- Extern taalmodel via licentie\n- Onze eigen webapplicatie",
+      "expected": {
+        "is_ai_system": true,
+        "gpai_relationship": "integrates_distributes",
+        "developed_or_commissioned": true,
+        "supplied_under_own_name": true
+      },
+      "tier": null
+    },
+    {
+      "id": "ho2-en-frontier-lab",
+      "lang": "en",
+      "name": "Atlas-1",
+      "description": "We are an AI lab. We pre-train Atlas-1 ourselves on a very large corpus using more than 10^25 floating point operations, and license it to enterprises. We are headquartered in California.",
+      "components": "- Large training cluster\n- Model API for enterprise customers",
+      "expected": {
+        "is_ai_system": true,
+        "gpai_relationship": "builds_or_finetunes",
+        "gpai_training_compute_over_10e25": true,
+        "established_outside_eu": true
+      },
+      "tier": null
+    },
+    {
+      "id": "ho2-en-forensic-tool",
+      "lang": "en",
+      "name": "Case Reconstruction",
+      "description": "A tool used by a national police forensic unit, under an explicit statutory authorisation, that reconstructs illegal imagery from partial evidence for the purpose of investigating and prosecuting child abuse offences.",
+      "components": "- Reconstruction model\n- Restricted forensic workstation",
+      "expected": {
+        "is_ai_system": true,
+        "csam_without_right_defence": true,
+        "uses_under_own_authority": true
+      },
+      "tier": null
+    },
+    {
+      "id": "ho2-de-videostudio-deployer",
+      "lang": "en",
+      "name": "Ad Studio",
+      "description": "An advertising agency licenses a face-swapping tool. They use it only to swap in the faces of actors who signed consent forms, for clothed commercial shoots. They never use it to produce intimate or sexual imagery.",
+      "components": "- Licensed face-swap tool\n- Editing suite",
+      "expected": {
+        "is_ai_system": true,
+        "deployer_uses_for_prohibited_purpose": false,
+        "uses_under_own_authority": true,
+        "developed_or_commissioned": false
+      },
+      "tier": null
+    },
+    {
+      "id": "ho2-en-voice-clone-consent",
+      "lang": "en",
+      "name": "VoiceDouble",
+      "description": "A studio tool that clones an actor's voice for dubbing. Every actor signs an explicit, specific written consent before their voice is cloned, and the output is ordinary dialogue.",
+      "components": "- Voice cloning model\n- Consent register",
+      "expected": {
+        "is_ai_system": true,
+        "generates_synthetic_content": true,
+        "generates_intimate_or_sexual_imagery": false
+      },
+      "tier": null
+    },
+    {
+      "id": "ho2-nl-hr-tool-eigen-bouw",
+      "lang": "nl",
+      "name": "Sollicitatieportaal",
+      "description": "Wij hebben zelf een sollicitatieportaal gebouwd dat kandidaten rangschikt. Het draait op een ingekocht taalmodel dat wij niet hebben getraind. Wij gebruiken het portaal alleen intern voor onze eigen vacatures.",
+      "components": "- Zelfgebouwd portaal\n- Ingekocht taalmodel",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": [
+          "employment"
+        ],
+        "developed_or_commissioned": true,
+        "uses_under_own_authority": true,
+        "gpai_relationship": "integrates_distributes"
+      },
+      "tier": "ANNEX_III"
     }
   ]
 }

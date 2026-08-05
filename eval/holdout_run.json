@@ -1,28 +1,33 @@
 {
   "summary": {
-    "cases": 20,
-    "fields_scored": 64,
-    "field_accuracy": 0.953125,
-    "wrong_rate": 0.015625,
-    "abstention_rate": 0.03125,
+    "cases": 30,
+    "fields_scored": 104,
+    "field_accuracy": 0.9711538461538461,
+    "wrong_rate": 0.009615384615384616,
+    "abstention_rate": 0.019230769230769232,
     "counts": {
-      "correct": 61,
+      "correct": 101,
       "abstained": 2,
       "wrong": 1
     },
     "by_field": {
-      "developed_or_commissioned": {
-        "correct": 0,
-        "abstained": 1,
+      "gpai_relationship": {
+        "correct": 4,
+        "abstained": 0,
         "wrong": 1
       },
       "uses_under_own_authority": {
-        "correct": 5,
+        "correct": 9,
+        "abstained": 1,
+        "wrong": 0
+      },
+      "developed_or_commissioned": {
+        "correct": 6,
         "abstained": 1,
         "wrong": 0
       },
       "is_ai_system": {
-        "correct": 20,
+        "correct": 30,
         "abstained": 0,
         "wrong": 0
       },
@@ -32,7 +37,7 @@
         "wrong": 0
       },
       "high_risk_domains": {
-        "correct": 5,
+        "correct": 6,
         "abstained": 0,
         "wrong": 0
       },
@@ -51,13 +56,8 @@
         "abstained": 0,
         "wrong": 0
       },
-      "gpai_relationship": {
-        "correct": 2,
-        "abstained": 0,
-        "wrong": 0
-      },
       "supplied_under_own_name": {
-        "correct": 1,
+        "correct": 4,
         "abstained": 0,
         "wrong": 0
       },
@@ -67,7 +67,7 @@
         "wrong": 0
       },
       "gpai_training_compute_over_10e25": {
-        "correct": 1,
+        "correct": 2,
         "abstained": 0,
         "wrong": 0
       },
@@ -92,7 +92,7 @@
         "wrong": 0
       },
       "established_outside_eu": {
-        "correct": 1,
+        "correct": 2,
         "abstained": 0,
         "wrong": 0
       },
@@ -127,7 +127,7 @@
         "wrong": 0
       },
       "generates_synthetic_content": {
-        "correct": 1,
+        "correct": 3,
         "abstained": 0,
         "wrong": 0
       },
@@ -160,13 +160,48 @@
         "correct": 1,
         "abstained": 0,
         "wrong": 0
+      },
+      "generates_intimate_or_sexual_imagery": {
+        "correct": 3,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "prohibited_generation_is_intended_purpose": {
+        "correct": 2,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "depicted_person_consented": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "has_technical_safeguards_against_misuse": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "generates_child_sexual_abuse_material": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "csam_without_right_defence": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "deployer_uses_for_prohibited_purpose": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
       }
     },
     "tier_exact": 1.0,
     "tier_under_warned": 0.0,
     "tier_over_warned": 0.0,
     "tier_counts": {
-      "exact": 15,
+      "exact": 17,
       "under_warned": 0,
       "over_warned": 0
     }
@@ -323,8 +358,8 @@
         {
           "field": "developed_or_commissioned",
           "expected": true,
-          "actual": false,
-          "verdict": "wrong"
+          "actual": true,
+          "verdict": "correct"
         },
         {
           "field": "supplied_under_own_name",
@@ -733,6 +768,330 @@
           "expected": true,
           "actual": true,
           "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho2-en-nudify-app",
+      "lang": "en",
+      "tier_expected": "PROHIBITED",
+      "tier_actual": "PROHIBITED",
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "generates_intimate_or_sexual_imagery",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "prohibited_generation_is_intended_purpose",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "depicted_person_consented",
+          "expected": false,
+          "actual": false,
+          "verdict": "correct"
+        },
+        {
+          "field": "developed_or_commissioned",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "supplied_under_own_name",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho2-en-general-image-model-safeguarded",
+      "lang": "en",
+      "tier_expected": null,
+      "tier_actual": null,
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "generates_synthetic_content",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "prohibited_generation_is_intended_purpose",
+          "expected": false,
+          "actual": false,
+          "verdict": "correct"
+        },
+        {
+          "field": "has_technical_safeguards_against_misuse",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "developed_or_commissioned",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "supplied_under_own_name",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho2-fr-retouche-neutre",
+      "lang": "fr",
+      "tier_expected": null,
+      "tier_actual": null,
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "generates_intimate_or_sexual_imagery",
+          "expected": false,
+          "actual": false,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho2-es-moderacion-contenido",
+      "lang": "es",
+      "tier_expected": null,
+      "tier_actual": null,
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "generates_child_sexual_abuse_material",
+          "expected": false,
+          "actual": false,
+          "verdict": "correct"
+        },
+        {
+          "field": "uses_under_own_authority",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho2-nl-marketing-op-llm",
+      "lang": "nl",
+      "tier_expected": null,
+      "tier_actual": null,
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "gpai_relationship",
+          "expected": "integrates_distributes",
+          "actual": "integrates_distributes",
+          "verdict": "correct"
+        },
+        {
+          "field": "developed_or_commissioned",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "supplied_under_own_name",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho2-en-frontier-lab",
+      "lang": "en",
+      "tier_expected": null,
+      "tier_actual": null,
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "gpai_relationship",
+          "expected": "builds_or_finetunes",
+          "actual": "builds_or_finetunes",
+          "verdict": "correct"
+        },
+        {
+          "field": "gpai_training_compute_over_10e25",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "established_outside_eu",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho2-en-forensic-tool",
+      "lang": "en",
+      "tier_expected": null,
+      "tier_actual": null,
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "csam_without_right_defence",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "uses_under_own_authority",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho2-de-videostudio-deployer",
+      "lang": "en",
+      "tier_expected": null,
+      "tier_actual": null,
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "deployer_uses_for_prohibited_purpose",
+          "expected": false,
+          "actual": false,
+          "verdict": "correct"
+        },
+        {
+          "field": "uses_under_own_authority",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "developed_or_commissioned",
+          "expected": false,
+          "actual": false,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho2-en-voice-clone-consent",
+      "lang": "en",
+      "tier_expected": null,
+      "tier_actual": null,
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "generates_synthetic_content",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "generates_intimate_or_sexual_imagery",
+          "expected": false,
+          "actual": false,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho2-nl-hr-tool-eigen-bouw",
+      "lang": "nl",
+      "tier_expected": "ANNEX_III",
+      "tier_actual": "ANNEX_III",
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "high_risk_domains",
+          "expected": [
+            "employment"
+          ],
+          "actual": [
+            "employment"
+          ],
+          "verdict": "correct"
+        },
+        {
+          "field": "developed_or_commissioned",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "uses_under_own_authority",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "gpai_relationship",
+          "expected": "integrates_distributes",
+          "actual": "uses_api",
+          "verdict": "wrong"
         }
       ]
     }

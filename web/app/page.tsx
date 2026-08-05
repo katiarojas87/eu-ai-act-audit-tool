@@ -286,7 +286,9 @@ export default function Page() {
                 ["Prohibited practice", a.prohibited_practice],
                 ["High-risk system", a.high_risk],
                 ["Transparency obligations", a.transparency],
-                ["GPAI relationship", a.gpai],
+                [a.gpai.result === "Downstream"
+                  ? "GPAI — downstream provider"
+                  : "GPAI relationship", a.gpai],
               ];
               return (
                 <div className="verdict" key={i}>

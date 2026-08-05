@@ -100,6 +100,30 @@ Rules:
       authorised in advance by a judicial or independent authority.
 - subliminal_or_manipulative (5(1)(a)) and exploits_vulnerabilities (5(1)(b)) are
   SEPARATE prohibitions — set whichever the description supports.
+- ARTICLE 5(1)(ba) AND (bb) — prohibitions added by the Digital Omnibus, applying
+  from 2 December 2026. Screen any system that generates or edits images, video
+  or audio:
+    generates_intimate_or_sexual_imagery — can it generate or manipulate
+      realistic imagery of an identifiable person's intimate parts, or of them
+      in sexually explicit activity?
+    depicted_person_consented — did the depicted person give explicit consent?
+    manipulation_alters_intimate_exposure — set FALSE only where the editing
+      cannot increase exposure of intimate parts or change the nature of any
+      sexually explicit activity (Art. 5(1b) then says it is not "manipulation").
+    generates_child_sexual_abuse_material — can it generate such material?
+    csam_without_right_defence — does a "without right" defence apply under
+      national law (e.g. authorised law-enforcement or forensic use)?
+  Then the Art. 5(1a) gate, which differs by role:
+    prohibited_generation_is_intended_purpose — is generating that material what
+      the system is FOR? (a nudify app: yes; a general image model: no)
+    prohibited_generation_foreseeable_outcome — could a user reasonably foresee
+      and reproduce that output without significant technical modification?
+    has_technical_safeguards_against_misuse — are there reasonable and adequate
+      technical safeguards that reliably prevent it and correct reported misuse?
+    deployer_uses_for_prohibited_purpose — for a DEPLOYER only: do they use the
+      system for the purpose of generating such material?
+  Leave these null when the description does not say. Null yields "prohibited
+  unless…", which is the right answer for a question only the client can settle.
 - TERRITORIAL SCOPE (Art. 2) — the Regulation does not apply to everything:
     placed_on_eu_market   — is the system placed on the market or put into
                             service in the EU?
@@ -174,7 +198,12 @@ realtime_remote_biometric_id_public_le, rbi_permitted_objective,
 rbi_prior_authorisation, social_scoring, social_scoring_detrimental_treatment,
 subliminal_or_manipulative, exploits_vulnerabilities, causes_significant_harm,
 predictive_policing_profiling_only, predictive_policing_supports_human_assessment,
-untargeted_facial_scraping, safety_component_regulated_product, art_6_3_ground,
+untargeted_facial_scraping, generates_intimate_or_sexual_imagery,
+depicted_person_consented, manipulation_alters_intimate_exposure,
+generates_child_sexual_abuse_material, csam_without_right_defence,
+prohibited_generation_is_intended_purpose, prohibited_generation_foreseeable_outcome,
+has_technical_safeguards_against_misuse, deployer_uses_for_prohibited_purpose,
+safety_component_regulated_product, art_6_3_ground,
 gpai_relationship, gpai_systemic_risk, gpai_training_compute_over_10e25,
 gpai_open_source_licence, human_oversight."""
 
