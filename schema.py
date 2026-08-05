@@ -27,8 +27,16 @@ HighRiskDomain = Literal[
     "essential_public_services", "justice", "migration",
     "biometrics", "law_enforcement", "critical_infrastructure",
 ]
+# Article 53 binds providers of general-purpose AI *models*. Someone who ships a
+# product built on someone else's model is a "downstream provider" (Art. 3(68))
+# — a provider of an AI *system*, not of the model — and owes none of Art. 53.
+# Conflating the two hands a product company the model-maker's duties, including
+# publishing a training-data summary for training it never did.
 GpaiRelationship = Literal[
-    "none", "uses_api", "builds_or_finetunes", "integrates_distributes",
+    "none",
+    "uses_api",                 # calls a model via API — no GPAI model duties
+    "builds_or_finetunes",      # trains or fine-tunes → provider of a GPAI model
+    "integrates_distributes",   # ships a product on someone else's model → Art. 3(68)
 ]
 # Article 6(3): an Annex III system is NOT high-risk if it does not pose a
 # significant risk of harm because it only does one of these. Never available
@@ -170,6 +178,12 @@ class Facts(BaseModel):
 
     gpai_relationship: GpaiRelationship = "none"
     gpai_systemic_risk: Tri = None
+    # Art. 51(2): systemic risk is PRESUMED above 10^25 FLOP of training compute.
+    # A concrete fact the client can answer, unlike "do you pose systemic risk?".
+    gpai_training_compute_over_10e25: Tri = None
+    # Art. 53(2): a free and open-source licence with public weights, architecture
+    # and usage information lifts Art. 53(1)(a) and (b) — never where systemic.
+    gpai_open_source_licence: Tri = None
     human_oversight: HumanOversight = "unknown"
 
     # Fact extraction must degrade, never crash. The LLM may emit an explicit

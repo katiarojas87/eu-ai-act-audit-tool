@@ -717,3 +717,68 @@ def test_generative_systems_get_the_article_50_transitional_note():
                        uses_under_own_authority=True))
     t = [o for o in a.obligations if o.article == "Art. 50"]
     assert t and "four-month transitional" in t[0].reasoning
+
+
+# --- GPAI: model provider vs downstream provider ------------------------------
+def _gp(**kw):
+    return Facts(is_ai_system=True, placed_on_eu_market=True, **kw)
+
+
+def test_downstream_provider_does_not_owe_article_53():
+    """Art. 53 binds providers of the MODEL. Shipping a product on someone
+    else's model makes you a downstream provider (Art. 3(68))."""
+    a = classify(_gp(gpai_relationship="integrates_distributes",
+                     developed_or_commissioned=True, supplied_under_own_name=True))
+    assert a.is_gpai is False
+    assert a.gpai.result == "Downstream"
+    assert "Art. 3(68)" in a.gpai.articles
+    assert not [o for o in a.obligations if o.article.startswith("Art. 53")]
+    assert not any("training content" in o.obligation.lower() for o in a.obligations)
+
+
+def test_model_provider_owes_the_article_53_list():
+    a = classify(_gp(gpai_relationship="builds_or_finetunes"))
+    assert a.is_gpai is True
+    arts = {o.article for o in a.obligations}
+    assert {"Art. 53(1)(a)", "Art. 53(1)(b)", "Art. 53(1)(c)", "Art. 53(1)(d)"} <= arts
+
+
+def test_compute_threshold_presumes_systemic_risk():
+    """Art. 51(2): presumed above 10^25 FLOP — a fact a client can actually answer."""
+    a = classify(_gp(gpai_relationship="builds_or_finetunes",
+                     gpai_training_compute_over_10e25=True))
+    arts = {o.article for o in a.obligations}
+    assert any(x.startswith("Art. 55") for x in arts)
+    assert "Art. 51(2)" in a.gpai.articles
+    assert "presumed" in a.gpai.detail
+
+
+def test_open_source_exemption_lifts_only_points_a_and_b():
+    a = classify(_gp(gpai_relationship="builds_or_finetunes",
+                     gpai_open_source_licence=True,
+                     gpai_training_compute_over_10e25=False))
+    lifted = [o for o in a.obligations if o.article == "Art. 53(2)"]
+    assert len(lifted) == 2
+    arts = {o.article for o in a.obligations}
+    assert {"Art. 53(1)(c)", "Art. 53(1)(d)"} <= arts   # copyright + summary still owed
+
+
+def test_open_source_exemption_never_applies_to_systemic_models():
+    a = classify(_gp(gpai_relationship="builds_or_finetunes",
+                     gpai_open_source_licence=True,
+                     gpai_training_compute_over_10e25=True))
+    assert not [o for o in a.obligations if o.article == "Art. 53(2)"]
+    arts = {o.article for o in a.obligations}
+    assert {"Art. 53(1)(a)", "Art. 53(1)(b)"} <= arts
+
+
+def test_third_country_model_provider_needs_an_authorised_representative():
+    a = classify(_gp(gpai_relationship="builds_or_finetunes",
+                     established_outside_eu=True))
+    assert "Art. 54" in {o.article for o in a.obligations}
+
+
+def test_api_use_creates_no_gpai_obligations():
+    a = classify(_gp(gpai_relationship="uses_api"))
+    assert a.is_gpai is False
+    assert not [o for o in a.obligations if o.article.startswith(("Art. 53", "Art. 55"))]

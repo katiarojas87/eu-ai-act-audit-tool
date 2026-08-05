@@ -35,12 +35,19 @@ from eval.score import (  # noqa: E402
 from rules import classify  # noqa: E402
 from schema import Facts  # noqa: E402
 
-GOLDEN = Path(__file__).parent / "golden_set.json"
+SETS = {
+    # development: used to diagnose and fix extraction, so scores on it are
+    # optimistic — the prompt has seen these failures.
+    "golden": Path(__file__).parent / "golden_set.json",
+    # held out: never used for tuning, so this is the unbiased figure.
+    "holdout": Path(__file__).parent / "holdout_set.json",
+}
+GOLDEN = SETS["golden"]
 
 
 def load_cases(lang: str | None = None, limit: int | None = None,
-               case_id: str | None = None) -> list[dict]:
-    cases = json.loads(GOLDEN.read_text(encoding="utf-8"))["cases"]
+               case_id: str | None = None, which: str = "golden") -> list[dict]:
+    cases = json.loads(SETS[which].read_text(encoding="utf-8"))["cases"]
     if case_id:
         cases = [c for c in cases if c["id"] == case_id]
     if lang:
@@ -165,9 +172,15 @@ def main() -> int:
     ap.add_argument("--lang", help="filter by language (nl/fr/en/es)")
     ap.add_argument("--case", help="run a single case id")
     ap.add_argument("--report", help="write raw results to this JSON file")
+    ap.add_argument("--set", dest="which", choices=sorted(SETS), default="golden",
+                    help="'golden' (development, tuned against) or 'holdout' "
+                         "(never tuned against — the unbiased figure)")
     args = ap.parse_args()
 
-    cases = load_cases(args.lang, args.limit, args.case)
+    cases = load_cases(args.lang, args.limit, args.case, args.which)
+    if args.which == "holdout" and not args.check_labels:
+        print("Running the HELD-OUT set. Do not tune facts.py on these results — "
+              "reproduce a failure in the development set first.\n")
     if not cases:
         print("No cases matched.")
         return 1

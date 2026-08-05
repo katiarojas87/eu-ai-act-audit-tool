@@ -1,0 +1,279 @@
+{
+  "_readme": [
+    "HELD-OUT evaluation cases. Same format as golden_set.json.",
+    "",
+    "These exist to give an unbiased accuracy figure. golden_set.json has been",
+    "used to diagnose and fix extraction, so scoring against it flatters the",
+    "result — the prompt has seen those failures. This file must NOT be used that",
+    "way: do not change facts.py in response to a failure here without first",
+    "reproducing it in the development set, and do not add cases from here to it.",
+    "",
+    "Run: python eval/run_eval.py --set holdout"
+  ],
+  "cases": [
+    {
+      "id": "ho-en-warehouse-safety",
+      "lang": "en",
+      "name": "Forklift Proximity Alert",
+      "description": "A system in our warehouse that watches camera feeds and sounds an alarm when a person walks too close to a moving forklift. It is a safety component of the forklift fleet, sold to us as part of the machinery by the manufacturer.",
+      "components": "- Ceiling cameras\n- Proximity detection model\n- Klaxon and dashboard alert",
+      "expected": {
+        "is_ai_system": true,
+        "safety_component_regulated_product": true,
+        "uses_under_own_authority": true
+      },
+      "tier": "ANNEX_I"
+    },
+    {
+      "id": "ho-nl-schoolexamen",
+      "lang": "nl",
+      "name": "Examenbeoordeling",
+      "description": "Een systeem dat door een middelbare school wordt gebruikt om examens van leerlingen automatisch te beoordelen en de eindcijfers vast te stellen. De leraar controleert de uitkomst niet.",
+      "components": "- Beoordelingsmodel\n- Leerlingvolgsysteem",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["education"],
+        "uses_under_own_authority": true,
+        "public_body_or_public_service": true
+      },
+      "tier": "ANNEX_III"
+    },
+    {
+      "id": "ho-fr-teleconseiller",
+      "lang": "fr",
+      "name": "Voix de synthese",
+      "description": "Un agent vocal qui appelle nos clients pour confirmer leurs rendez-vous. La voix est synthétique et imite une voix humaine ; rien n'indique à l'appelé qu'il parle à une machine.",
+      "components": "- Synthèse vocale\n- Automate d'appels",
+      "expected": {
+        "is_ai_system": true,
+        "interacts_with_people": true,
+        "ai_interaction_obvious": false,
+        "uses_under_own_authority": true
+      },
+      "tier": "LIMITED"
+    },
+    {
+      "id": "ho-es-triaje-hospital",
+      "lang": "es",
+      "name": "Triaje de urgencias",
+      "description": "Un sistema hospitalario que clasifica a los pacientes que llegan a urgencias y establece el orden de atención según la gravedad estimada.",
+      "components": "- Modelo de clasificación de gravedad\n- Pantalla de triaje",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["essential_public_services"],
+        "public_body_or_public_service": true,
+        "uses_under_own_authority": true
+      },
+      "tier": "ANNEX_III"
+    },
+    {
+      "id": "ho-en-gpai-downstream",
+      "lang": "en",
+      "name": "LegalDraft Assistant",
+      "description": "We sell a contract-drafting product to law firms under our own brand. It is built on top of a large language model licensed from a third-party model provider. We do not train or fine-tune that model; we wrap it with our own prompts and interface.",
+      "components": "- Third-party LLM under licence\n- Prompt orchestration layer\n- Web product",
+      "expected": {
+        "is_ai_system": true,
+        "gpai_relationship": "integrates_distributes",
+        "developed_or_commissioned": true,
+        "supplied_under_own_name": true
+      },
+      "tier": null
+    },
+    {
+      "id": "ho-en-gpai-open-source",
+      "lang": "en",
+      "name": "OpenWeights LM",
+      "description": "We train a general-purpose language model from scratch and release it under a free and open-source licence. The weights, the model architecture and the usage information are all publicly available. Training used well under 10^25 floating point operations.",
+      "components": "- Training cluster\n- Public model repository",
+      "expected": {
+        "is_ai_system": true,
+        "gpai_relationship": "builds_or_finetunes",
+        "gpai_open_source_licence": true,
+        "gpai_training_compute_over_10e25": false
+      },
+      "tier": "MINIMAL"
+    },
+    {
+      "id": "ho-nl-fraudepreventie-verzekering",
+      "lang": "nl",
+      "name": "Schadeclaim controle",
+      "description": "Een model dat bij onze autoverzekering controleert of een ingediende schadeclaim frauduleus lijkt. Het beoordeelt geen levens- of ziektekostenverzekeringen en bepaalt geen premies.",
+      "components": "- Anomaliedetectie op claims\n- Werkbak voor onderzoekers",
+      "expected": {
+        "is_ai_system": true,
+        "insurance_life_or_health": false,
+        "sectoral_regime": "financial_services"
+      },
+      "tier": null
+    },
+    {
+      "id": "ho-en-cctv-verification",
+      "lang": "en",
+      "name": "Server Room Access",
+      "description": "A face check at the server room door. It compares the person in front of the camera with the photo on their own staff record, purely to confirm they are who they claim to be before unlocking. It never searches a crowd or identifies unknown people.",
+      "components": "- Door camera\n- One-to-one face match against the employee record",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["biometrics"],
+        "biometric_verification_only": true
+      },
+      "tier": null
+    },
+    {
+      "id": "ho-fr-modele-recherche",
+      "lang": "fr",
+      "name": "Prototype universitaire",
+      "description": "Un modèle de notation de crédit développé par un laboratoire universitaire uniquement à des fins de recherche scientifique. Il n'est pas mis sur le marché et n'est jamais appliqué à de vrais demandeurs de prêt.",
+      "components": "- Environnement de recherche\n- Données anonymisées",
+      "expected": {
+        "is_ai_system": true,
+        "sole_purpose_scientific_research": true
+      },
+      "tier": "OUT_OF_SCOPE"
+    },
+    {
+      "id": "ho-en-us-saas-eu-customers",
+      "lang": "en",
+      "name": "Global Support Router",
+      "description": "A US company runs a ticket-routing model in its own data centres. Its European subsidiaries and customers receive and act on the routing decisions in Germany and France every day.",
+      "components": "- Routing classifier\n- Global ticketing platform",
+      "expected": {
+        "is_ai_system": true,
+        "established_outside_eu": true,
+        "output_used_in_eu": true
+      },
+      "tier": null
+    },
+    {
+      "id": "ho-es-vigilancia-masiva",
+      "lang": "es",
+      "name": "Identificacion en directo",
+      "description": "La policía municipal quiere usar reconocimiento facial en directo en las calles para identificar a cualquier persona que pase, de forma continua y sin un objetivo concreto ni autorización previa.",
+      "components": "- Cámaras urbanas\n- Identificación biométrica en tiempo real",
+      "expected": {
+        "is_ai_system": true,
+        "realtime_remote_biometric_id_public_le": true,
+        "rbi_permitted_objective": "none"
+      },
+      "tier": "PROHIBITED"
+    },
+    {
+      "id": "ho-en-hr-promotion",
+      "lang": "en",
+      "name": "Promotion Recommender",
+      "description": "A tool our HR department uses to decide which employees are put forward for promotion, scoring them on performance data and manager notes.",
+      "components": "- Scoring model on performance data\n- HR review screen",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["employment"],
+        "profiling": true,
+        "uses_under_own_authority": true,
+        "developed_or_commissioned": false
+      },
+      "tier": "ANNEX_III"
+    },
+    {
+      "id": "ho-nl-chatbot-duidelijk",
+      "lang": "nl",
+      "name": "Gemeentelijke chatbot",
+      "description": "Een chatbot op de website van de gemeente die vragen over afvalophaling beantwoordt. Bovenaan het venster staat duidelijk 'automatische assistent — u spreekt niet met een medewerker'.",
+      "components": "- Chatwidget\n- Kennisbank",
+      "expected": {
+        "is_ai_system": true,
+        "interacts_with_people": true,
+        "ai_interaction_obvious": true,
+        "public_body_or_public_service": true
+      },
+      "tier": "MINIMAL"
+    },
+    {
+      "id": "ho-en-grammar-tool",
+      "lang": "en",
+      "name": "Report Polisher",
+      "description": "An add-in that fixes punctuation and tightens sentences our analysts have already written. It performs standard editing only and does not change the substance or meaning of the text.",
+      "components": "- Editing model\n- Word add-in",
+      "expected": {
+        "is_ai_system": true,
+        "assistive_or_no_substantial_alteration": true
+      },
+      "tier": null
+    },
+    {
+      "id": "ho-fr-deepfake-consentement",
+      "lang": "fr",
+      "name": "Studio video",
+      "description": "Un outil de production qui remplace le visage d'un acteur par celui d'un autre dans des publicités. Les vidéos diffusées sont manipulées et le public ne peut pas le deviner.",
+      "components": "- Modèle de substitution de visage\n- Chaîne de montage vidéo",
+      "expected": {
+        "is_ai_system": true,
+        "deepfake_content": true,
+        "generates_synthetic_content": true,
+        "uses_under_own_authority": true
+      },
+      "tier": "LIMITED"
+    },
+    {
+      "id": "ho-en-rule-based-router",
+      "lang": "en",
+      "name": "Ticket Rules Engine",
+      "description": "A fixed set of if-then rules written by our support manager that files tickets into queues by keyword. It does not learn from data and produces the same output for the same input every time, by design.",
+      "components": "- Keyword rule table\n- Ticketing integration",
+      "expected": {
+        "is_ai_system": false
+      },
+      "tier": "NOT_AI"
+    },
+    {
+      "id": "ho-es-importador",
+      "lang": "es",
+      "name": "Distribucion de software RRHH",
+      "description": "Nuestra empresa española introduce en el mercado europeo un sistema de selección de personal fabricado por una compañía canadiense. El producto lleva la marca del fabricante canadiense, no la nuestra.",
+      "components": "- Acuerdo de distribución\n- Soporte local",
+      "expected": {
+        "is_ai_system": true,
+        "high_risk_domains": ["employment"],
+        "imports_from_third_country": true
+      },
+      "tier": "ANNEX_III"
+    },
+    {
+      "id": "ho-en-emotion-callcentre",
+      "lang": "en",
+      "name": "Agent Sentiment Monitor",
+      "description": "A system in our call centre that infers the emotional state of our own agents during calls, and reports to team leaders who is becoming frustrated or disengaged. It is used for performance management.",
+      "components": "- Voice emotion model\n- Team leader dashboard",
+      "expected": {
+        "is_ai_system": true,
+        "emotion_recognition": true,
+        "emotion_context": "workplace_education",
+        "emotion_medical_or_safety_purpose": false
+      },
+      "tier": "PROHIBITED"
+    },
+    {
+      "id": "ho-nl-persoonlijk-gebruik",
+      "lang": "nl",
+      "name": "Receptenhulp",
+      "description": "Iemand gebruikt thuis een app die recepten voorstelt op basis van wat er in de koelkast ligt. Puur privé, geen enkel zakelijk of beroepsmatig gebruik.",
+      "components": "- App op de telefoon",
+      "expected": {
+        "is_ai_system": true,
+        "personal_non_professional_use": true
+      },
+      "tier": "OUT_OF_SCOPE"
+    },
+    {
+      "id": "ho-en-defence-only",
+      "lang": "en",
+      "name": "Threat Classifier",
+      "description": "A classifier developed for and used exclusively by the armed forces for national defence purposes. It has no civilian version and is never offered commercially.",
+      "components": "- Classified network\n- Sensor fusion model",
+      "expected": {
+        "is_ai_system": true,
+        "military_defence_national_security": true
+      },
+      "tier": "OUT_OF_SCOPE"
+    }
+  ]
+}

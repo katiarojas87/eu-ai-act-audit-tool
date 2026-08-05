@@ -1,0 +1,740 @@
+{
+  "summary": {
+    "cases": 20,
+    "fields_scored": 64,
+    "field_accuracy": 0.953125,
+    "wrong_rate": 0.015625,
+    "abstention_rate": 0.03125,
+    "counts": {
+      "correct": 61,
+      "abstained": 2,
+      "wrong": 1
+    },
+    "by_field": {
+      "developed_or_commissioned": {
+        "correct": 0,
+        "abstained": 1,
+        "wrong": 1
+      },
+      "uses_under_own_authority": {
+        "correct": 5,
+        "abstained": 1,
+        "wrong": 0
+      },
+      "is_ai_system": {
+        "correct": 20,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "safety_component_regulated_product": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "high_risk_domains": {
+        "correct": 5,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "public_body_or_public_service": {
+        "correct": 3,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "interacts_with_people": {
+        "correct": 2,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "ai_interaction_obvious": {
+        "correct": 2,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "gpai_relationship": {
+        "correct": 2,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "supplied_under_own_name": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "gpai_open_source_licence": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "gpai_training_compute_over_10e25": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "insurance_life_or_health": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "sectoral_regime": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "biometric_verification_only": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "sole_purpose_scientific_research": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "established_outside_eu": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "output_used_in_eu": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "realtime_remote_biometric_id_public_le": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "rbi_permitted_objective": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "profiling": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "assistive_or_no_substantial_alteration": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "deepfake_content": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "generates_synthetic_content": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "imports_from_third_country": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "emotion_recognition": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "emotion_context": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "emotion_medical_or_safety_purpose": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "personal_non_professional_use": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      },
+      "military_defence_national_security": {
+        "correct": 1,
+        "abstained": 0,
+        "wrong": 0
+      }
+    },
+    "tier_exact": 1.0,
+    "tier_under_warned": 0.0,
+    "tier_over_warned": 0.0,
+    "tier_counts": {
+      "exact": 15,
+      "under_warned": 0,
+      "over_warned": 0
+    }
+  },
+  "cases": [
+    {
+      "id": "ho-en-warehouse-safety",
+      "lang": "en",
+      "tier_expected": "ANNEX_I",
+      "tier_actual": "ANNEX_I",
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "safety_component_regulated_product",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "uses_under_own_authority",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho-nl-schoolexamen",
+      "lang": "nl",
+      "tier_expected": "ANNEX_III",
+      "tier_actual": "ANNEX_III",
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "high_risk_domains",
+          "expected": [
+            "education"
+          ],
+          "actual": [
+            "education"
+          ],
+          "verdict": "correct"
+        },
+        {
+          "field": "uses_under_own_authority",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "public_body_or_public_service",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho-fr-teleconseiller",
+      "lang": "fr",
+      "tier_expected": "LIMITED",
+      "tier_actual": "LIMITED",
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "interacts_with_people",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "ai_interaction_obvious",
+          "expected": false,
+          "actual": false,
+          "verdict": "correct"
+        },
+        {
+          "field": "uses_under_own_authority",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho-es-triaje-hospital",
+      "lang": "es",
+      "tier_expected": "ANNEX_III",
+      "tier_actual": "ANNEX_III",
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "high_risk_domains",
+          "expected": [
+            "essential_public_services"
+          ],
+          "actual": [
+            "essential_public_services"
+          ],
+          "verdict": "correct"
+        },
+        {
+          "field": "public_body_or_public_service",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "uses_under_own_authority",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho-en-gpai-downstream",
+      "lang": "en",
+      "tier_expected": null,
+      "tier_actual": null,
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "gpai_relationship",
+          "expected": "integrates_distributes",
+          "actual": "integrates_distributes",
+          "verdict": "correct"
+        },
+        {
+          "field": "developed_or_commissioned",
+          "expected": true,
+          "actual": false,
+          "verdict": "wrong"
+        },
+        {
+          "field": "supplied_under_own_name",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho-en-gpai-open-source",
+      "lang": "en",
+      "tier_expected": "MINIMAL",
+      "tier_actual": "MINIMAL",
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "gpai_relationship",
+          "expected": "builds_or_finetunes",
+          "actual": "builds_or_finetunes",
+          "verdict": "correct"
+        },
+        {
+          "field": "gpai_open_source_licence",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "gpai_training_compute_over_10e25",
+          "expected": false,
+          "actual": false,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho-nl-fraudepreventie-verzekering",
+      "lang": "nl",
+      "tier_expected": null,
+      "tier_actual": null,
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "insurance_life_or_health",
+          "expected": false,
+          "actual": false,
+          "verdict": "correct"
+        },
+        {
+          "field": "sectoral_regime",
+          "expected": "financial_services",
+          "actual": "financial_services",
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho-en-cctv-verification",
+      "lang": "en",
+      "tier_expected": null,
+      "tier_actual": null,
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "high_risk_domains",
+          "expected": [
+            "biometrics"
+          ],
+          "actual": [
+            "biometrics"
+          ],
+          "verdict": "correct"
+        },
+        {
+          "field": "biometric_verification_only",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho-fr-modele-recherche",
+      "lang": "fr",
+      "tier_expected": "OUT_OF_SCOPE",
+      "tier_actual": "OUT_OF_SCOPE",
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "sole_purpose_scientific_research",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho-en-us-saas-eu-customers",
+      "lang": "en",
+      "tier_expected": null,
+      "tier_actual": null,
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "established_outside_eu",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "output_used_in_eu",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho-es-vigilancia-masiva",
+      "lang": "es",
+      "tier_expected": "PROHIBITED",
+      "tier_actual": "PROHIBITED",
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "realtime_remote_biometric_id_public_le",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "rbi_permitted_objective",
+          "expected": "none",
+          "actual": "none",
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho-en-hr-promotion",
+      "lang": "en",
+      "tier_expected": "ANNEX_III",
+      "tier_actual": "ANNEX_III",
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "high_risk_domains",
+          "expected": [
+            "employment"
+          ],
+          "actual": [
+            "employment"
+          ],
+          "verdict": "correct"
+        },
+        {
+          "field": "profiling",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "uses_under_own_authority",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "developed_or_commissioned",
+          "expected": false,
+          "actual": null,
+          "verdict": "abstained"
+        }
+      ]
+    },
+    {
+      "id": "ho-nl-chatbot-duidelijk",
+      "lang": "nl",
+      "tier_expected": "MINIMAL",
+      "tier_actual": "MINIMAL",
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "interacts_with_people",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "ai_interaction_obvious",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "public_body_or_public_service",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho-en-grammar-tool",
+      "lang": "en",
+      "tier_expected": null,
+      "tier_actual": null,
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "assistive_or_no_substantial_alteration",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho-fr-deepfake-consentement",
+      "lang": "fr",
+      "tier_expected": "LIMITED",
+      "tier_actual": "LIMITED",
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "deepfake_content",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "generates_synthetic_content",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "uses_under_own_authority",
+          "expected": true,
+          "actual": null,
+          "verdict": "abstained"
+        }
+      ]
+    },
+    {
+      "id": "ho-en-rule-based-router",
+      "lang": "en",
+      "tier_expected": "NOT_AI",
+      "tier_actual": "NOT_AI",
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": false,
+          "actual": false,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho-es-importador",
+      "lang": "es",
+      "tier_expected": "ANNEX_III",
+      "tier_actual": "ANNEX_III",
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "high_risk_domains",
+          "expected": [
+            "employment"
+          ],
+          "actual": [
+            "employment"
+          ],
+          "verdict": "correct"
+        },
+        {
+          "field": "imports_from_third_country",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho-en-emotion-callcentre",
+      "lang": "en",
+      "tier_expected": "PROHIBITED",
+      "tier_actual": "PROHIBITED",
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "emotion_recognition",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "emotion_context",
+          "expected": "workplace_education",
+          "actual": "workplace_education",
+          "verdict": "correct"
+        },
+        {
+          "field": "emotion_medical_or_safety_purpose",
+          "expected": false,
+          "actual": false,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho-nl-persoonlijk-gebruik",
+      "lang": "nl",
+      "tier_expected": "OUT_OF_SCOPE",
+      "tier_actual": "OUT_OF_SCOPE",
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "personal_non_professional_use",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        }
+      ]
+    },
+    {
+      "id": "ho-en-defence-only",
+      "lang": "en",
+      "tier_expected": "OUT_OF_SCOPE",
+      "tier_actual": "OUT_OF_SCOPE",
+      "fields": [
+        {
+          "field": "is_ai_system",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        },
+        {
+          "field": "military_defence_national_security",
+          "expected": true,
+          "actual": true,
+          "verdict": "correct"
+        }
+      ]
+    }
+  ]
+}

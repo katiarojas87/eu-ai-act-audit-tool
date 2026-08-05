@@ -211,17 +211,19 @@ AI_LITERACY_NOTE = (
     "Art. 4 as amended by Art. 1(5) of the Digital Omnibus: the duty is to take "
     "measures appropriate to the staff's knowledge and the context of use. It does "
     "not require guaranteeing any specific level of AI literacy for any individual.")
+# Art. 53(1). Points (a) and (b) are lifted for free and open-source models
+# (Art. 53(2)) unless the model carries systemic risk.
 GPAI_OBLIGATIONS = [
-    "Technical documentation of the model",
-    "Information & documentation to downstream providers",
-    "Copyright-compliance policy",
-    "Public summary of training content",
+    ("Technical documentation of the model", "Art. 53(1)(a)", True),
+    ("Information & documentation to downstream providers", "Art. 53(1)(b)", True),
+    ("Copyright-compliance policy", "Art. 53(1)(c)", False),
+    ("Public summary of training content", "Art. 53(1)(d)", False),
 ]
 GPAI_SYSTEMIC_OBLIGATIONS = [
-    "Model evaluation & adversarial testing",
-    "Systemic-risk assessment & mitigation",
-    "Serious-incident reporting to the AI Office",
-    "Cybersecurity protection",
+    ("Model evaluation & adversarial testing", "Art. 55(1)(a)"),
+    ("Systemic-risk assessment & mitigation", "Art. 55(1)(b)"),
+    ("Serious-incident reporting to the AI Office", "Art. 55(1)(c)"),
+    ("Cybersecurity protection", "Art. 55(1)(d)"),
 ]
 
 
@@ -785,16 +787,46 @@ def _evaluate_transparency(f: Facts) -> Conclusion:
                       status="definitive")
 
 
+def _is_systemic(f: Facts) -> bool:
+    """Art. 51(1)-(2): systemic risk, presumed above 10^25 FLOP of training compute."""
+    return f.gpai_systemic_risk is True or f.gpai_training_compute_over_10e25 is True
+
+
 def _evaluate_gpai(f: Facts) -> Conclusion:
-    if f.gpai_relationship in ("builds_or_finetunes", "integrates_distributes"):
+    if f.gpai_relationship == "builds_or_finetunes":
         arts = ["Art. 53"]
-        detail = "provider of / building on a general-purpose AI model"
-        if f.gpai_systemic_risk is True:
+        detail = "provider of a general-purpose AI model"
+        if _is_systemic(f):
             arts.append("Art. 55")
-            detail += " with systemic risk"
+            basis = ("training compute above 10^25 FLOP, so systemic risk is presumed "
+                     "(Art. 51(2))" if f.gpai_training_compute_over_10e25 is True
+                     else "systemic risk")
+            detail += f" with {basis}"
+            arts.append("Art. 51(2)")
+        elif f.gpai_systemic_risk is None and f.gpai_training_compute_over_10e25 is None:
+            detail += " — systemic risk not established (Art. 51: presumed above "
+            detail += "10^25 FLOP of training compute)"
+        if f.gpai_open_source_licence is True and not _is_systemic(f):
+            arts.append("Art. 53(2)")
+            detail += "; released under a free and open-source licence, which lifts "
+            detail += "Art. 53(1)(a) and (b)"
         return Conclusion(result="Yes", detail=detail, articles=arts,
                           trigger=f"gpai_relationship = {f.gpai_relationship}",
                           status="definitive")
+
+    if f.gpai_relationship == "integrates_distributes":
+        # Art. 3(68): a downstream provider provides an AI SYSTEM built on a
+        # model. Article 53 binds providers of the MODEL, not of the system.
+        return Conclusion(
+            result="Downstream",
+            detail="downstream provider — provides an AI system built on another "
+                   "party's general-purpose AI model. Article 53 model obligations "
+                   "fall on the model's provider, not on you; your duties follow "
+                   "from the system you place on the market",
+            articles=["Art. 3(68)"],
+            trigger="gpai_relationship = integrates_distributes",
+            status="definitive")
+
     if f.gpai_relationship == "uses_api":
         return Conclusion(result="No",
                           detail="only calls a foundation model via API (no weight changes)",
@@ -976,11 +1008,38 @@ def _obligations_for(tier: str, is_gpai: bool, systemic: bool,
                               deadline=DATE_TRANSPARENCY, role="all",
                               article="Art. 50", reasoning=note))
     if is_gpai:
-        out += [Obligation(obligation=o, deadline=DATE_GPAI, role="provider",
-                           article="Art. 53") for o in GPAI_OBLIGATIONS]
+        open_source = f.gpai_open_source_licence is True and not systemic
+        for text, art, liftable in GPAI_OBLIGATIONS:
+            if open_source and liftable:
+                out.append(Obligation(
+                    obligation=f"{text} — lifted by the open-source exemption",
+                    deadline=DATE_GPAI, role="provider", article="Art. 53(2)",
+                    status="likely_in_place",
+                    reasoning="Art. 53(2) disapplies Art. 53(1)(a) and (b) for models "
+                              "released under a free and open-source licence with "
+                              "public weights, architecture and usage information. It "
+                              "does not apply to models with systemic risk.",
+                    gap_question="Are the weights, architecture and usage information "
+                                 "genuinely public under a free and open-source licence?"))
+            else:
+                out.append(Obligation(obligation=text, deadline=DATE_GPAI,
+                                      role="provider", article=art))
+        if f.established_outside_eu is True:
+            out.append(Obligation(
+                obligation="Appoint an authorised representative in the Union before "
+                           "placing the model on the market",
+                deadline=DATE_GPAI, role="provider", article="Art. 54",
+                reasoning="Art. 54(1) applies to providers of general-purpose AI models "
+                          "established in third countries."))
         if systemic:
-            out += [Obligation(obligation=o, deadline=DATE_GPAI, role="provider",
-                               article="Art. 55") for o in GPAI_SYSTEMIC_OBLIGATIONS]
+            out += [Obligation(obligation=t, deadline=DATE_GPAI, role="provider",
+                               article=a) for t, a in GPAI_SYSTEMIC_OBLIGATIONS]
+            out.append(Obligation(
+                obligation="Notify the Commission that the model meets the systemic-risk "
+                           "threshold", deadline=DATE_GPAI, role="provider",
+                article="Art. 52(1)",
+                reasoning="Art. 52(1) requires notification without delay, and in any "
+                          "event within two weeks of the threshold being met."))
 
     # Art. 4 AI literacy binds providers and deployers at every tier, and has
     # applied since 2 February 2025.
@@ -1037,7 +1096,7 @@ def classify(f: Facts, system_name: str = "") -> Assessment:
     }[tier]
 
     is_gpai = gpai.result == "Yes"
-    systemic = f.gpai_systemic_risk is True
+    systemic = _is_systemic(f)
 
     # missing information = decisive facts still unknown
     missing = []

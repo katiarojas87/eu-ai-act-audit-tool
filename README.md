@@ -100,24 +100,35 @@ Two failure modes are scored separately, because they cost a client differently:
 End-to-end, a tier below the true one is an **under-warning** (the client is told
 they owe less than they do) and is gated hardest, at 2%.
 
-Latest run — `eval/last_run.json`:
+Two sets:
 
-| Metric | Result | Target |
+| Set | Cases | Purpose |
 |---|---|---|
-| Field accuracy | 96.8% (151/156) | ≥ 90% |
-| Wrong assertions | 0.0% | ≤ 5% |
-| Tier exact | 94.3% (33/35) | ≥ 85% |
-| Under-warned | 0.0% | ≤ 2% |
+| `golden_set.json` | 42 | Development. Used to diagnose and fix extraction, so scores on it are optimistic. |
+| `holdout_set.json` | 20 | **Never tuned against.** The honest figure. |
 
-**Read these as development-set numbers, not an unbiased estimate.** The prompt
-was tightened in response to failures in this same set, so it is tuned on the
-data it is scored against. A held-out set is needed for a true figure.
+```bash
+python eval/run_eval.py --set holdout
+```
 
-Known from the last run: after the domain prompt was tightened, the model tends
-to return an empty `high_risk_domains` for carve-out cases (a badge reader, fraud
-detection, motor insurance) rather than naming the domain and setting the
-carve-out flag. The tier is unaffected, but the report loses the explanation —
-it can no longer say "biometrics, but excluded by Annex III(1)(a)".
+Held-out run (`eval/holdout_run.json`) — the unbiased numbers:
+
+| Metric | Held-out | Development | Target |
+|---|---|---|---|
+| Field accuracy | **95.3%** (61/64) | 96.8% | ≥ 90% |
+| Wrong assertions | **1.6%** | 0.0% | ≤ 5% |
+| Tier exact | **100%** (15/15) | 94.3% | ≥ 85% |
+| Under-warned | **0.0%** | 0.0% | ≤ 2% |
+
+Discipline for the held-out set: do not change `facts.py` in response to a
+failure there without first reproducing it in the development set, and never
+move cases between the two. The one exception made so far is recorded below.
+
+Known from the held-out run: `developed_or_commissioned` was under-specified —
+it did not say whether it asks about the system or the components inside it, so
+a product wrapping a third-party model was read both ways. The definition has
+since been clarified, which means the 95.3% above predates that fix; a fresh
+held-out set is needed for a clean number after it.
 
 ## Using it in a client session
 
@@ -155,7 +166,7 @@ it can no longer say "biometrics, but excluded by Annex III(1)(a)".
 | `web/` | **The frontend** — Next.js. The only UI. |
 | `scope_input.py` | Consultant-supplied Art. 2 scope facts from the UI. |
 | `eval/` | Golden set + scorer for fact-extraction accuracy. |
-| `test_*.py` | Unit tests — run `pytest` (225, no API key needed). |
+| `test_*.py` | Unit tests — run `pytest` (241, no API key needed). |
 
 ## Notes
 
@@ -178,6 +189,13 @@ it can no longer say "biometrics, but excluded by Annex III(1)(a)".
   specific level — and gave providers of generative systems already on the market
   before 2 August 2026 a four-month transitional period for the Art. 50 marking
   duty. Both are reflected in the obligation text.
+- **GPAI duties follow the model, not the product.** Art. 53 binds providers of
+  general-purpose AI *models*. A company shipping a product built on someone
+  else's model is a downstream provider (Art. 3(68)) and owes none of it — the
+  tool says so explicitly rather than handing them the model-maker's list.
+  Systemic risk is presumed above 10^25 FLOP (Art. 51(2)), the free and
+  open-source exemption lifts Art. 53(1)(a)-(b) unless systemic (Art. 53(2)),
+  and third-country model providers need an authorised representative (Art. 54).
 - **NOT YET MODELLED — two new prohibitions.** The Omnibus inserted
   **Art. 5(1)(ba)** (AI generating or manipulating realistic intimate or sexually
   explicit imagery of an identifiable person without their explicit consent) and

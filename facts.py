@@ -35,7 +35,10 @@ Rules:
   authority to research facts and apply the law, or to influence an election. A
   police or prosecution tool is "law_enforcement" (Annex III(6)) and is NOT also
   "justice" merely because it concerns crime.
-- ANNEX III CARVE-OUTS — these domains are narrower than they sound:
+- ANNEX III CARVE-OUTS — these domains are narrower than they sound. When one
+  applies, STILL LIST THE DOMAIN and set the carve-out flag to true. Do not drop
+  the domain: the report needs to say "this is biometrics, but excluded by
+  Annex III(1)(a)", which it cannot do if the domain is missing.
     biometric_verification_only — true if it only confirms a person is who they
       claim to be (unlocking a phone, a door badge). Annex III(1)(a) excludes it.
     credit_fraud_detection_only — true if it is used to detect financial fraud
@@ -58,9 +61,20 @@ Rules:
     law_enforcement_authorised_detection — is the system authorised by law to
       detect, prevent, investigate or prosecute criminal offences? (runs through
       50(1)-(4))
-- gpai_relationship: "builds_or_finetunes" if they train/fine-tune a foundation
-  model; "integrates_distributes" if they ship a product built on one;
-  "uses_api" if they only call one via API; "none" otherwise.
+- gpai_relationship — Article 53 binds providers of general-purpose AI MODELS,
+  not of products built on them, so this distinction decides who owes what:
+    "builds_or_finetunes"    they train or fine-tune the model itself
+    "integrates_distributes" they ship a product built on SOMEONE ELSE'S model
+                             (a downstream provider, Art. 3(68) — not Art. 53)
+    "uses_api"               they only call a model via API
+    "none"                   no general-purpose model involved
+- gpai_training_compute_over_10e25: true only if the description indicates the
+  model was trained with more than 10^25 floating point operations. Art. 51(2)
+  presumes systemic risk above that threshold. Leave null if not stated — do not
+  guess from how large the model "sounds".
+- gpai_open_source_licence: true if the model is released under a free and
+  open-source licence AND its weights, architecture and usage information are
+  publicly available (Art. 53(2)).
 - emotion_context: "workplace_education" only if emotion recognition is used in a
   workplace or educational setting.
 - ARTICLE 5 ELEMENTS AND EXCEPTIONS — almost no prohibition is absolute. When you
@@ -103,7 +117,13 @@ Rules:
                             personally, not professionally? (Art. 2(10))
 - ROLE FACTS — do NOT try to decide whether they are a "provider" or "deployer";
   that is a legal conclusion the rule engine draws. Just answer what they did:
-    developed_or_commissioned  — did they build it, or have it built for them?
+    developed_or_commissioned  — did they build THIS SYSTEM, or have it built for
+                                 them? Judge the system they place on the market,
+                                 not the components inside it. Someone who wraps
+                                 a third-party model in their own product DID
+                                 develop the system (true), even though they did
+                                 not train the model — that separate question is
+                                 gpai_relationship.
     supplied_under_own_name    — do they offer it to others under their own name
                                  or trademark? (Selling, licensing, or making it
                                  available — free or paid.)
@@ -155,7 +175,8 @@ rbi_prior_authorisation, social_scoring, social_scoring_detrimental_treatment,
 subliminal_or_manipulative, exploits_vulnerabilities, causes_significant_harm,
 predictive_policing_profiling_only, predictive_policing_supports_human_assessment,
 untargeted_facial_scraping, safety_component_regulated_product, art_6_3_ground,
-gpai_relationship, gpai_systemic_risk, human_oversight."""
+gpai_relationship, gpai_systemic_risk, gpai_training_compute_over_10e25,
+gpai_open_source_licence, human_oversight."""
 
 
 def extract_facts(name: str, description: str, components: str = "",
