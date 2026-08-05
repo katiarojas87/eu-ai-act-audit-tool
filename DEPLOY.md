@@ -22,9 +22,15 @@ persists in every revision. Treat that key as compromised.
 ```bash
 gcloud services enable secretmanager.googleapis.com --project eu-ai-act-krs-8842
 
-# Paste the NEW key at the prompt, then press Ctrl-D.
-gcloud secrets create anthropic-api-key --replication-policy=automatic \
-  --project eu-ai-act-krs-8842 --data-file=-
+# NOTE: `--data-file=-` reads stdin. Pasting and pressing Enter before Ctrl-D
+# stores a TRAILING NEWLINE, which makes an illegal HTTP header — the Anthropic
+# SDK then reports "APIConnectionError: Connection error", which looks like a
+# network fault and sends you hunting in the wrong place. Use a hidden prompt
+# and printf, which cannot add one:
+read -rs -p "Paste the new key: " KEY \
+  && printf %s "$KEY" | gcloud secrets create anthropic-api-key \
+       --replication-policy=automatic --project eu-ai-act-krs-8842 --data-file=- \
+  && unset KEY
 
 # Choose a real password — not a word. e.g. `openssl rand -base64 24`
 gcloud secrets create app-password --replication-policy=automatic \
@@ -42,11 +48,31 @@ for S in anthropic-api-key app-password; do
 done
 ```
 
-To rotate later, add a new version and redeploy — the code reads the value at
-startup:
+`secrets_env.py` strips surrounding whitespace from these values at startup as a
+backstop, so a stray newline degrades to a logged warning rather than an
+inscrutable connection error. Store them clean anyway.
+
+Cloud Run reads a secret when the container starts, so **a new secret version
+needs a new revision**. Add the version, then force one:
 
 ```bash
-gcloud secrets versions add anthropic-api-key --data-file=- --project eu-ai-act-krs-8842
+printf %s "$NEW_KEY" | gcloud secrets versions add anthropic-api-key \
+  --data-file=- --project eu-ai-act-krs-8842
+
+gcloud run services update eu-ai-act-audit --project eu-ai-act-krs-8842 \
+  --region europe-west1 --update-env-vars "SECRET_REV=$(date +%s)"
+```
+
+**Converting an existing plaintext env var to a secret needs two steps** — Cloud
+Run refuses to change the type in place:
+
+```bash
+gcloud run services update eu-ai-act-audit --project eu-ai-act-krs-8842 \
+  --region europe-west1 --remove-env-vars ANTHROPIC_API_KEY,APP_PASSWORD
+
+gcloud run services update eu-ai-act-audit --project eu-ai-act-krs-8842 \
+  --region europe-west1 \
+  --set-secrets "ANTHROPIC_API_KEY=anthropic-api-key:latest,APP_PASSWORD=app-password:latest"
 ```
 
 ---

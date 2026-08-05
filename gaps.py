@@ -13,10 +13,13 @@ import json
 import anthropic
 from dotenv import load_dotenv
 
+from secrets_env import normalise_env
+
 import config
 from schema import Obligation
 
 load_dotenv()
+normalise_env()   # a secret with a trailing newline breaks the HTTP header
 _client = anthropic.Anthropic()
 
 _SYSTEM = """You assess COMPLIANCE GAPS for a list of EU AI Act obligations, using

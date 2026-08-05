@@ -10,11 +10,14 @@ import json
 import anthropic
 from dotenv import load_dotenv
 
+from secrets_env import normalise_env
+
 import config
 from retriever import retrieve
 from schema import Facts
 
 load_dotenv()
+normalise_env()   # a secret with a trailing newline breaks the HTTP header
 _client = anthropic.Anthropic()
 
 _SYSTEM = """You extract STRUCTURED FACTS about an AI system for an EU AI Act
