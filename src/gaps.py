@@ -8,7 +8,7 @@ the gap here; it never changes the classification.
 """
 from __future__ import annotations
 
-import json
+import logging
 
 import anthropic
 from dotenv import load_dotenv
@@ -16,11 +16,13 @@ from dotenv import load_dotenv
 from secrets_env import normalise_env
 
 import config
+from json_extract import ExtractionError, extract_array
 from schema import Obligation
 
 load_dotenv()
 normalise_env()   # a secret with a trailing newline breaks the HTTP header
 _client = anthropic.Anthropic()
+log = logging.getLogger("eu_ai_act.gaps")
 
 _SYSTEM = """You assess COMPLIANCE GAPS for a list of EU AI Act obligations, using
 ONLY the client's component/architecture list. You do not change the
@@ -61,9 +63,12 @@ def assess_gaps(obligations: list[Obligation], description: str,
             model=config.LLM_MODEL, max_tokens=3000,
             system=_SYSTEM, messages=[{"role": "user", "content": user}])
         text = next((b.text for b in resp.content if b.type == "text"), "")
-        start, end = text.find("["), text.rfind("]")
-        rows = json.loads(text[start:end + 1]) if start != -1 else []
+        rows = extract_array(text)
+    except ExtractionError as e:
+        log.warning("gap assessment produced unparseable JSON: %s", e)
+        rows = []
     except Exception:  # noqa: BLE001 — never let gap assessment break classification
+        log.exception("gap assessment call failed; leaving obligations as needs_confirmation")
         rows = []
 
     for i, o in enumerate(obligations):

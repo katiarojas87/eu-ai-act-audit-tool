@@ -311,3 +311,9 @@ class Assessment(BaseModel):
     human_review_required: bool = True
 
     obligations: list[Obligation] = Field(default_factory=list)
+
+    # HMAC over everything above, set by /classify and checked by /chat and
+    # /report (see integrity.py) — proves this Assessment is what the rule
+    # engine actually produced, not a client-edited copy of one. Empty until
+    # signed.
+    sig: str = ""

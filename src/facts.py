@@ -5,7 +5,7 @@ fills the structured Facts. It does NOT decide the tier; rules.py does that.
 """
 from __future__ import annotations
 
-import json
+import logging
 
 import anthropic
 from dotenv import load_dotenv
@@ -13,12 +13,14 @@ from dotenv import load_dotenv
 from secrets_env import normalise_env
 
 import config
+from json_extract import ExtractionError, extract_object
 from retriever import retrieve
 from schema import Facts
 
 load_dotenv()
 normalise_env()   # a secret with a trailing newline breaks the HTTP header
 _client = anthropic.Anthropic()
+log = logging.getLogger("eu_ai_act.facts")
 
 _SYSTEM = """You extract STRUCTURED FACTS about an AI system for an EU AI Act
 assessment. You do NOT classify risk and you do NOT decide obligations — a
@@ -226,13 +228,23 @@ def extract_facts(name: str, description: str, components: str = "",
             f"AI SYSTEM\nName: {name}\nDescription: {description}\n"
             f"Components: {components or '(none provided)'}")
 
-    resp = _client.messages.create(
-        model=config.LLM_MODEL, max_tokens=2000,
-        system=_SYSTEM, messages=[{"role": "user", "content": user}],
-    )
-    text = next((b.text for b in resp.content if b.type == "text"), "")
-    start, end = text.find("{"), text.rfind("}")
-    data = json.loads(text[start:end + 1]) if start != -1 else {}
+    # One retry on a parse failure: a single malformed reply is usually a
+    # transient formatting slip, not a systemic problem, and a retry is far
+    # cheaper than losing the whole intake to a 500.
+    for attempt in (1, 2):
+        resp = _client.messages.create(
+            model=config.LLM_MODEL, max_tokens=2000,
+            system=_SYSTEM, messages=[{"role": "user", "content": user}],
+        )
+        text = next((b.text for b in resp.content if b.type == "text"), "")
+        try:
+            data = extract_object(text)
+            break
+        except ExtractionError:
+            log.warning("fact extraction produced unparseable JSON (attempt %d/2)", attempt)
+            if attempt == 2:
+                raise
+
     if organisation_role and organisation_role != "unknown":
         data["organisation_role"] = organisation_role
     data.update(overrides or {})

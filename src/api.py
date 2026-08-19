@@ -22,6 +22,7 @@ import config
 from chat import answer as answer_chat
 from facts import extract_facts
 from gaps import assess_gaps
+import integrity
 from report_v2 import generate_report
 from rules import classify
 import limits
@@ -106,7 +107,23 @@ def _limit_handler(request: Request, exc: limits.LimitExceeded) -> Response:
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "model": config.LLM_MODEL, **limits.usage()}
+    # Deliberately unauthenticated (uptime checks can't carry the shared
+    # password) and deliberately minimal: it used to also return today's
+    # classification/chat counts, which leaks client-volume metrics to anyone
+    # on the internet. That detail now lives behind /usage instead.
+    return {"status": "ok", "model": config.LLM_MODEL}
+
+
+@app.get("/usage")
+def usage(
+    request: Request,
+    x_app_password: str | None = Header(default=None),
+    x_forwarded_for: str | None = Header(default=None),
+) -> dict:
+    client = limits.client_id(x_forwarded_for,
+                              request.client.host if request.client else "-")
+    _check_password(x_app_password, client)
+    return limits.usage()
 
 
 @app.post("/classify", response_model=Assessment)
@@ -133,6 +150,9 @@ def classify_endpoint(
         assessment = classify(facts, system_name=body.name)
         assessment.obligations = assess_gaps(
             assessment.obligations, body.description, body.components)
+        # Sign what's about to leave the server, so /chat and /report can tell
+        # a genuine result from a client-edited copy of one.
+        assessment.sig = integrity.sign(assessment)
         return assessment
     except Exception as e:  # noqa: BLE001
         # Log the detail server-side; return a generic message so backend
@@ -157,6 +177,10 @@ def chat_endpoint(
                               request.client.host if request.client else "-")
     _check_password(x_app_password, client)
     limits.check_rate(client)
+    if not integrity.verify(body.assessment):
+        raise HTTPException(
+            status_code=400,
+            detail="This assessment could not be verified. Please re-run it.")
     if body.messages[-1].role != "user":
         raise HTTPException(status_code=400,
                             detail="The last message must be from the user.")
@@ -190,6 +214,10 @@ def report_endpoint(
     limits.check_rate(client)
     if not body.systems:
         raise HTTPException(status_code=400, detail="No systems to report.")
+    if not all(integrity.verify(s) for s in body.systems):
+        raise HTTPException(
+            status_code=400,
+            detail="One or more assessments could not be verified. Please re-run them.")
     # Build into a temporary directory that is removed straight away. Client
     # names must not accumulate on the server's filesystem: the report is the
     # client's document, and the server has no reason to keep a copy.

@@ -98,12 +98,19 @@ gcloud run deploy eu-ai-act-audit \
   --concurrency 10 \
   --timeout 120 \
   --set-secrets "ANTHROPIC_API_KEY=anthropic-api-key:latest,APP_PASSWORD=app-password:latest" \
-  --set-env-vars "RATE_LIMIT_PER_HOUR=30,DAILY_CLASSIFY_CAP=200,MAX_AUTH_FAILURES=10"
+  --update-env-vars "RATE_LIMIT_PER_HOUR=30,DAILY_CLASSIFY_CAP=200,MAX_AUTH_FAILURES=10"
 ```
 
 `--allow-unauthenticated` is correct here: the app's own password is the gate,
 because clients cannot present Google credentials. The limits are what make that
 safe.
+
+**Use `--update-env-vars`, not `--set-env-vars`, here.** `--set-env-vars`
+*replaces* the whole env var list — run it on a redeploy after step 3 has
+already set `FRONTEND_ORIGIN`, and it silently wipes that, breaking CORS for
+the deployed frontend until someone notices. `--update-env-vars` merges
+instead, so this command is safe to reuse verbatim on every redeploy, not just
+the first one.
 
 **`--max-instances 3` is a spend control, not a performance setting.** The rate
 limit and daily cap live in each container's memory, so the real ceiling is the

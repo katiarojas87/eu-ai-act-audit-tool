@@ -67,7 +67,7 @@ def answer(assessment: Assessment, messages: list[dict]) -> str:
     turn of the same conversation, so Anthropic's prompt cache makes a five-turn
     conversation cost roughly one assessment's worth of input tokens, not five.
     """
-    context = assessment.model_dump_json(indent=2)
+    context = assessment.model_dump_json(indent=2, exclude={"sig"})
     resp = _client.messages.create(
         model=config.LLM_MODEL, max_tokens=800,
         system=[
@@ -76,4 +76,10 @@ def answer(assessment: Assessment, messages: list[dict]) -> str:
         ],
         messages=messages,
     )
-    return next((b.text for b in resp.content if b.type == "text"), "").strip()
+    text = next((b.text for b in resp.content if b.type == "text"), "").strip()
+    if not text:
+        # A silent empty reply reads to the user as the assistant ignoring
+        # them. Raise so api.py's existing handler logs it, refunds the
+        # chat-cap slot, and returns a real error instead.
+        raise RuntimeError(f"chat model returned no text (stop_reason={resp.stop_reason!r})")
+    return text

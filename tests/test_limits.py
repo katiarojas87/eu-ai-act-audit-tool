@@ -126,12 +126,25 @@ def test_empty_description_is_refused(client):
     assert r.status_code == 422
 
 
-def test_health_needs_no_password_and_reports_usage(client):
+def test_health_needs_no_password_and_stays_minimal(client):
+    """/health is public (uptime checks can't carry the shared password), so it
+    must not leak business-volume metrics like today's classification count."""
     r = client.get("/health")
     assert r.status_code == 200
     body = r.json()
     assert body["status"] == "ok"
+    assert "daily_cap" not in body and "classifications" not in body
+
+
+def test_usage_reports_the_detail_health_no_longer_does(client):
+    r = client.get("/usage", headers={"x-app-password": "correct-horse"})
+    assert r.status_code == 200
+    body = r.json()
     assert "daily_cap" in body and "classifications" in body
+
+
+def test_usage_requires_the_password(client):
+    assert client.get("/usage").status_code == 401
 
 
 def test_report_endpoint_rejects_an_absurd_number_of_systems(client):

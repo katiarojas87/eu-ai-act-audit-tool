@@ -40,7 +40,9 @@ put `src/` on `PYTHONPATH` rather than nesting a package).
 | `src/scope_input.py` | Consultant-supplied Article 2 scope facts from the UI, converted into fact overrides. |
 | `src/secrets_env.py` | Strips whitespace from injected env secrets — see `docs/DEPLOY.md` for the incident that made this necessary. |
 | `src/limits.py` | Rate limiting, daily spend cap, auth-failure lockout. In-memory, per-instance. |
-| `src/api.py` | FastAPI backend — the entrypoint. `/classify`, `/report`, `/health`. |
+| `src/integrity.py` | Signs an `Assessment` on the way out of `/classify`, verifies it on the way back into `/chat` and `/report` — see below. |
+| `src/json_extract.py` | Shared, exception-safe JSON-object/array extraction from an LLM text reply (used by `facts.py` and `gaps.py`). |
+| `src/api.py` | FastAPI backend — the entrypoint. `/classify`, `/chat`, `/report`, `/health`, `/usage`. |
 | `web/` | Next.js frontend — the only UI. Two route handlers proxy to the backend; no LLM calls happen client-side. |
 | `knowledge/annex_i.md`, `annex_iii.md`, `obligations.md`, `prohibited_practices.md`, `gpai_checklist.md` | Curated legal reference used to ground fact extraction via RAG. |
 | `eval/` | Evaluation harness — see `docs/EVALUATION.md`. |
@@ -63,7 +65,20 @@ One classification is therefore **two Claude calls**: step 3 and step 5.
 2. `report_v2.generate_report(...)` builds the PDF into a `tempfile.TemporaryDirectory()` that is deleted as soon as the bytes are read back — the server keeps no copy of a client's report.
 3. Returns the PDF bytes directly; the frontend's `/api/report` route streams them to the browser.
 
-**Frontend** (`web/app/api/classify/route.ts`, `web/app/api/report/route.ts`) are thin proxies: they hold `BACKEND_URL` server-side (never exposed to the browser), forward the `x-app-password` header, and pass the response straight through. No Anthropic call happens in `web/`.
+**Frontend** (`web/app/api/classify/route.ts`, `web/app/api/report/route.ts`, `web/app/api/chat/route.ts`) are thin proxies: they hold `BACKEND_URL` server-side (never exposed to the browser), forward the `x-app-password` header, and pass the response straight through. No Anthropic call happens in `web/`.
+
+## Why the Assessment carries a signature
+
+`/chat` and `/report` are stateless: the Assessment they act on travels back
+from the browser as plain request JSON, not from a server-side session. That
+means the client — anyone holding the shared password, editing a devtools
+request — could otherwise submit an Assessment the rule engine never actually
+produced, and get a chat reply or a branded PDF that treats it as real.
+`/classify` signs the Assessment it returns (`assessment.sig`, an HMAC keyed
+on `APP_PASSWORD`/`ASSESSMENT_SIGNING_KEY`, computed in `integrity.py`);
+`/chat` and `/report` verify it before touching the payload, and reject a
+mismatch with a "please re-run it" error rather than silently trusting the
+edit.
 
 ## Why the LLM is not in the decision path
 

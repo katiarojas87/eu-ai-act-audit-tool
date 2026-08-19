@@ -18,14 +18,6 @@ from schema import Facts
 
 
 @pytest.fixture
-def assessment_dict() -> dict:
-    a = classify(Facts(is_ai_system=True, high_risk_domains=["employment"],
-                       placed_on_eu_market=True, developed_or_commissioned=True,
-                       supplied_under_own_name=True), "CV Screener")
-    return a.model_dump()
-
-
-@pytest.fixture
 def client(monkeypatch):
     monkeypatch.setenv("APP_PASSWORD", "correct-horse")
     monkeypatch.setenv("RATE_LIMIT_PER_HOUR", "100")
@@ -36,6 +28,19 @@ def client(monkeypatch):
     import api
     importlib.reload(api)
     return TestClient(api.app)
+
+
+@pytest.fixture
+def assessment_dict(client) -> dict:
+    # Depends on `client` so APP_PASSWORD is set (via monkeypatch) before
+    # signing — /chat now verifies this signature (see integrity.py), matching
+    # what a real client would carry after calling /classify.
+    import integrity
+    a = classify(Facts(is_ai_system=True, high_risk_domains=["employment"],
+                       placed_on_eu_market=True, developed_or_commissioned=True,
+                       supplied_under_own_name=True), "CV Screener")
+    a.sig = integrity.sign(a)
+    return a.model_dump()
 
 
 def _body(assessment_dict, **kw):

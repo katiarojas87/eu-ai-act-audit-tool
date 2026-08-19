@@ -18,6 +18,7 @@ type Assessment = {
   organisation_role: string; roles?: string[]; role_basis?: Conclusion | null;
   application_date: string; confidence: string;
   missing_information: string[]; human_review_required: boolean; obligations: Obligation[];
+  sig?: string;   // server-side HMAC proving this came from /classify unedited
 };
 
 const TIER_LABEL: Record<string, string> = {
@@ -237,15 +238,15 @@ export default function Page() {
             </div>
             <div className="field">
               <label htmlFor="name">System name</label>
-              <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. CV Screener" />
+              <input id="name" type="text" maxLength={200} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. CV Screener" />
             </div>
             <div className="field">
               <label htmlFor="desc">Plain-language description</label>
-              <textarea id="desc" value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="What does it do? Who is affected? What decisions does it influence?" />
+              <textarea id="desc" maxLength={8000} value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="What does it do? Who is affected? What decisions does it influence?" />
             </div>
             <div className="field">
               <label htmlFor="comp">Components / architecture — optional</label>
-              <textarea id="comp" value={components} onChange={(e) => setComponents(e.target.value)} placeholder={"- AI Agent (GPT-4o)\n- Fine-tuned ranking model\n- Email integration"} />
+              <textarea id="comp" maxLength={8000} value={components} onChange={(e) => setComponents(e.target.value)} placeholder={"- AI Agent (GPT-4o)\n- Fine-tuned ranking model\n- Email integration"} />
             </div>
             <div className="field">
               <label htmlFor="role">Client&apos;s role for this system</label>
@@ -472,6 +473,7 @@ export default function Page() {
                       <div className="chat-input-row">
                         <input
                           type="text"
+                          maxLength={4000}
                           value={chats[i]?.input ?? ""}
                           onChange={(e) => {
                             const v = e.target.value;
