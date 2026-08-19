@@ -59,10 +59,10 @@ pip install -r requirements.txt
 
 cp .env.example .env            # then paste your Anthropic API key into .env
 
-python fetch_law.py             # download the EU AI Act text into data/
-python ingest.py                # build the local vector store (first run downloads the embed model)
+python src/fetch_law.py         # download the EU AI Act text into data/
+python src/ingest.py            # build the local vector store (first run downloads the embed model)
 
-APP_PASSWORD=yourpassword uvicorn api:app --port 8090
+APP_PASSWORD=yourpassword uvicorn api:app --app-dir src --port 8090
 ```
 
 **Frontend** (the only UI):
@@ -368,7 +368,7 @@ authority.
   the Digital Omnibus on AI ([Regulation (EU) 2026/1744](https://eur-lex.europa.eu/eli/reg/2026/1744/oj/eng),
   OJ L, 2026/1744, 24.7.2026) rewrote Article 4 and deferred both high-risk
   deadlines, so the original text no longer states the law. Re-run
-  `python fetch_law.py && python ingest.py` after any amendment;
+  `python src/fetch_law.py && python src/ingest.py` after any amendment;
   `--list` shows available versions.
 - **Application dates are quoted, not asserted.** They now resolve verbatim from
   Art. 113 like any other provision: Annex III high-risk **2 December 2027**,

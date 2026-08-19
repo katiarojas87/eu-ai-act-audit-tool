@@ -30,6 +30,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from rules import ANNEX_III_MAP, classify  # noqa: E402
 from schema import Facts, HighRiskDomain  # noqa: E402
@@ -149,7 +150,7 @@ def branches(which: str) -> int:
     driver.write_text(
         "import json, sys\n"
         "from pathlib import Path\n"
-        "sys.path.insert(0, str(Path(__file__).resolve().parent.parent))\n"
+        "sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'src'))\n"
         "from rules import classify\n"
         "from schema import Facts\n"
         f"cases = json.loads(Path(r'{SETS[which]}').read_text(encoding='utf-8'))['cases']\n"
@@ -159,9 +160,9 @@ def branches(which: str) -> int:
     try:
         root = Path(__file__).resolve().parent.parent
         subprocess.run([sys.executable, "-m", "coverage", "run",
-                        "--include=rules.py", str(driver)], cwd=root, check=True)
+                        "--include=src/rules.py", str(driver)], cwd=root, check=True)
         subprocess.run([sys.executable, "-m", "coverage", "report",
-                        "-m", "--include=rules.py"], cwd=root, check=True)
+                        "-m", "--include=src/rules.py"], cwd=root, check=True)
         print("\n  Missing lines are decision paths the eval set never reaches.")
     finally:
         driver.unlink(missing_ok=True)

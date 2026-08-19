@@ -38,6 +38,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from eval.score import obligation_keys  # noqa: E402
 from rules import classify  # noqa: E402

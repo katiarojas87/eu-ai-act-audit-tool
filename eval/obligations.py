@@ -36,6 +36,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from eval.score import (  # noqa: E402
     aggregate_obligations, obligation_keys, score_obligations, slice_obligations,

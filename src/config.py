@@ -1,7 +1,7 @@
 """Central configuration for the EU AI Act audit tool."""
 from pathlib import Path
 
-BASE_DIR = Path(__file__).parent
+BASE_DIR = Path(__file__).resolve().parent.parent  # repo root — data/knowledge/chroma/reports live there, not in src/
 DATA_DIR = BASE_DIR / "data"          # raw EU AI Act source documents
 KNOWLEDGE_DIR = BASE_DIR / "knowledge"  # curated structured reference (annexes, obligations)
 CHROMA_DIR = BASE_DIR / "chroma"      # persisted vector store

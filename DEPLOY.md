@@ -150,9 +150,9 @@ Never set this to `*` — the endpoint carries client descriptions.
 The corpus is a snapshot. After any amendment:
 
 ```bash
-python fetch_law.py --list     # what consolidated versions exist
-python fetch_law.py            # take the newest
-python ingest.py               # rebuild the vector store
+python src/fetch_law.py --list # what consolidated versions exist
+python src/fetch_law.py        # take the newest
+python src/ingest.py           # rebuild the vector store
 pytest                         # a test fails if the corpus went stale
 ```
 

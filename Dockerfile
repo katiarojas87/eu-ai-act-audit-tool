@@ -25,9 +25,9 @@ RUN pip install --upgrade pip \
 COPY . .
 
 # Pre-build the ChromaDB index + cache the embedding model into the image.
-RUN python ingest.py
+RUN python src/ingest.py
 
 # Cloud Run sends the port to listen on via $PORT (defaults to 8080).
 EXPOSE 8080
 # v2 backend: FastAPI (deterministic rule engine + RAG-grounded fact extraction).
-CMD uvicorn api:app --host 0.0.0.0 --port ${PORT:-8080}
+CMD uvicorn api:app --app-dir src --host 0.0.0.0 --port ${PORT:-8080}
