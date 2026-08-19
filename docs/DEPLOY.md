@@ -9,15 +9,21 @@ Anthropic directly.
 
 ---
 
-## 0. Before anything else: rotate the key
+## 0. Secrets belong in Secret Manager, not env vars
 
-The first deployment stored `ANTHROPIC_API_KEY` as a **plain environment
-variable** on Cloud Run. Anyone with Viewer on the project can read it, and it
-persists in every revision. Treat that key as compromised.
+**Resolved 2026-08.** The first deployment stored `ANTHROPIC_API_KEY` as a
+plain environment variable on Cloud Run — readable by anyone with Viewer on
+the project, and persisted in every revision. That key was revoked and
+rotated; both secrets now live in Secret Manager as shown below. Recorded here
+because it is the kind of mistake worth documenting, not repeating: if you
+ever see `--set-env-vars` carrying `ANTHROPIC_API_KEY` or `APP_PASSWORD` again
+in a deploy command, that is a regression, not a variant.
 
-1. Revoke it at <https://console.anthropic.com> → API Keys.
+To do this from scratch (new project, or rotating again):
+
+1. Revoke the old key at <https://console.anthropic.com> → API Keys.
 2. Create a new one.
-3. Put it in Secret Manager — never in `--set-env-vars` again.
+3. Put it in Secret Manager — never in `--set-env-vars`.
 
 ```bash
 gcloud services enable secretmanager.googleapis.com --project eu-ai-act-krs-8842
