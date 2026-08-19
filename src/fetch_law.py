@@ -186,7 +186,7 @@ def main() -> int:
         else "as adopted, WITHOUT amendments"
     print(f"Saved {len(text):,} characters to {out}")
     print(f"  version: {celex} — {kind}")
-    print("Next: python ingest.py")
+    print("Next: python src/ingest.py")
     return 0
 
 
