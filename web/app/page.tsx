@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // "operative" = binding enacting terms. "recital" = non-binding preamble, shown
 // with a warning so it is never read as the rule itself.
@@ -112,6 +112,31 @@ const DEMOS: { label: string; name: string; description: string; components: str
   },
 ];
 
+// Field-by-field walkthrough. Each selector must resolve to something already
+// in the DOM (the form has no conditional fields), so the tour never has to
+// wait for an element to appear — it can jump straight to any step.
+type TourStep = { selector: string; title: string; text: string };
+const TOUR_STEPS: TourStep[] = [
+  { selector: "#pw", title: "Access password",
+    text: "Fill in the password shared with you by email — ask Katia if you don't have it yet." },
+  { selector: ".demos", title: "Demo cases",
+    text: "Entirely optional. Click one to auto-fill a realistic example, if you want to see how it works — or just click Next and keep going, no need to pick one. Your own system's details go in the fields below." },
+  { selector: "#client", title: "Client / company",
+    text: "The company this assessment is for. It's printed on the generated PDF report — leave it blank and the report just says \"Client\"." },
+  { selector: "#name", title: "System name",
+    text: "A short, recognisable name for the AI system, e.g. “CV Screener”. This is what shows up in the results and the report." },
+  { selector: "#desc", title: "Plain-language description",
+    text: "Describe what the system does and who it affects, in your own words — no legal terms needed. More detail here means a sharper, more confident classification." },
+  { selector: "#comp", title: "Components / architecture",
+    text: "Optional, but worth filling in: list the technical building blocks — the model used, data sources, whether a human reviews the output before it takes effect. This is what the compliance gap check is based on." },
+  { selector: "#role", title: "Client's role",
+    text: "If you already know whether the client is the provider or the deployer of this system, set it here. It overrides whatever the tool would otherwise infer from the description." },
+  { selector: ".scope", title: "Scope (Art. 2) — optional",
+    text: "Open this if you already know facts a description rarely states outright, like whether the system is placed on the EU market. It decides whether the Regulation applies at all." },
+  { selector: "#classify-btn", title: "Classify",
+    text: "Once the description is filled in, click here to run the assessment. That's it — the result and a chat panel to ask follow-up questions appear on the right." },
+];
+
 export default function Page() {
   const [password, setPassword] = useState("");
   const [clientName, setClientName] = useState("");
@@ -125,6 +150,34 @@ export default function Page() {
   const [systems, setSystems] = useState<Assessment[]>([]);
   const [chats, setChats] = useState<ChatState[]>([]);
   const [reporting, setReporting] = useState(false);
+
+  const [tourStep, setTourStep] = useState<number | null>(null);
+  const [tourRect, setTourRect] = useState<DOMRect | null>(null);
+
+  // Re-measure the current step's target whenever the step changes, and keep
+  // it correct across resizes/scrolls — the alternative (measuring once) goes
+  // stale the moment the browser is resized or a field's content wraps.
+  useEffect(() => {
+    if (tourStep === null) return;
+    const step = TOUR_STEPS[tourStep];
+    const el = document.querySelector(step.selector);
+    if (!el) { setTourStep(null); return; }   // selector drifted from the DOM — bail, don't hang
+
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    const measure = () => setTourRect(el.getBoundingClientRect());
+    measure();   // correct immediately if no scrolling was actually needed
+    const settle = setTimeout(measure, 350);   // re-measure once the smooth scroll (if any) finishes
+    window.addEventListener("resize", measure);
+    window.addEventListener("scroll", measure, true);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setTourStep(null); };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      clearTimeout(settle);
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure, true);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [tourStep]);
 
   function loadDemo(d: (typeof DEMOS)[number]) {
     setName(d.name); setDesc(d.description); setComponents(d.components); setError("");
@@ -195,8 +248,52 @@ export default function Page() {
     finally { setReporting(false); }
   }
 
+  // Prefer below the target; flip above if there isn't room. TOUR_TIP_H is a
+  // deliberately generous estimate (the longest step's body text wraps to
+  // ~6 lines) so the clamp below guarantees the box fits the viewport even
+  // when the guess is off, rather than trusting the guess to be exact.
+  // window.* is safe here — this only ever runs after a client click sets
+  // tourStep, never during the server render (tourStep starts null).
+  const TOUR_TIP_H = 280;
+  const tourTip = tourStep !== null && tourRect ? {
+    top: Math.min(
+      Math.max(
+        window.innerHeight - tourRect.bottom > TOUR_TIP_H
+          ? tourRect.bottom + 12 : tourRect.top - TOUR_TIP_H - 12,
+        12),
+      window.innerHeight - TOUR_TIP_H - 12),
+    left: Math.min(Math.max(tourRect.left, 12), window.innerWidth - 332),
+  } : null;
+
   return (
     <>
+      {tourStep !== null && tourRect && tourTip && (
+        <>
+          <div
+            className="tour-spotlight"
+            style={{ top: tourRect.top - 6, left: tourRect.left - 6,
+                     width: tourRect.width + 12, height: tourRect.height + 12 }}
+          />
+          <div className="tour-tip" style={{ top: tourTip.top, left: tourTip.left }}>
+            <p className="tour-count">Step {tourStep + 1} of {TOUR_STEPS.length}</p>
+            <h3>{TOUR_STEPS[tourStep].title}</h3>
+            <p className="tour-body">{TOUR_STEPS[tourStep].text}</p>
+            <div className="tour-actions">
+              <button type="button" className="tour-skip" onClick={() => setTourStep(null)}>Skip tour</button>
+              <div className="tour-nav">
+                {tourStep > 0 && (
+                  <button type="button" className="btn-ghost" onClick={() => setTourStep(tourStep - 1)}>Back</button>
+                )}
+                {tourStep < TOUR_STEPS.length - 1 ? (
+                  <button type="button" className="btn-primary" onClick={() => setTourStep(tourStep + 1)}>Next</button>
+                ) : (
+                  <button type="button" className="btn-primary" onClick={() => setTourStep(null)}>Got it</button>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
       <header className="masthead">
         <div className="wrap">
           <p className="eyebrow">EU AI Act · System classifier</p>
@@ -204,6 +301,20 @@ export default function Page() {
           <p>Describe an AI system in plain language (NL / FR / EN / ES). A deterministic
             rule engine classifies it across independent dimensions and cites the provision
             behind every conclusion. A decision-support tool — not legal advice.</p>
+
+          <details className="howto" open>
+            <summary>How to use this</summary>
+            <ol>
+              <li>Enter the access password below.</li>
+              <li>Load a demo case, or describe your own AI system in plain language — what it does, who it affects.</li>
+              <li>Read the classification: tier, roles and obligations, each citing the provision behind it.</li>
+              <li>Ask the chat panel a follow-up — it explains the result, grounded in that assessment only.</li>
+              <li>Add more systems, then generate one branded PDF report covering all of them.</li>
+            </ol>
+            <button type="button" className="tour-start" onClick={() => setTourStep(0)}>
+              ▶ Walk me through the form
+            </button>
+          </details>
         </div>
       </header>
 
@@ -298,7 +409,7 @@ export default function Page() {
               </p>
             </details>
 
-            <button className="btn-primary" onClick={classify} disabled={loading}>
+            <button id="classify-btn" className="btn-primary" onClick={classify} disabled={loading}>
               {loading ? "Classifying…" : "Classify system"}
             </button>
             {loading && <div className="loading"><span className="spinner" />Running the rule engine…</div>}

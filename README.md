@@ -9,6 +9,24 @@ legal duties are, and where the gaps in your compliance evidence are.
 No API key handy? [`docs/sample-assessment.pdf`](docs/sample-assessment.pdf) is
 a real generated report from this session — open it directly.
 
+## Try it live
+
+**[eu-ai-act-audit.vercel.app](https://eu-ai-act-audit.vercel.app)** — no
+install required. It's gated by a shared password; ask for access.
+
+1. Enter the password.
+2. Load a demo case, or describe your own AI system in plain language — what
+   it does, who it affects.
+3. Classify it. The result shows the tier, roles and obligations, each citing
+   the provision it came from.
+4. Use the chat panel to ask a follow-up about the result — it explains the
+   assessment, it doesn't re-decide it.
+5. Add more systems, then generate one branded PDF report covering all of
+   them.
+
+The app itself has the same walkthrough under "How to use this" if you'd
+rather read it there.
+
 ## Why it's built this way
 
 **The LLM never decides the classification.** Claude only extracts structured

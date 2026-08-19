@@ -49,6 +49,52 @@ body {
 .masthead p { margin: 0; max-width: 62ch; color: #d7dce6; font-size: 14.5px; }
 .masthead .reg { font-family: var(--font-mono), monospace; font-size: 12px; color: #9fb0cc; margin-top: 14px; }
 
+/* First-time orientation. Open by default — still a <details>, so it can be
+   collapsed by anyone who doesn't need it on repeat visits. */
+.masthead .howto { margin-top: 16px; max-width: 62ch; border: 1px solid rgba(255,255,255,.18); border-radius: 3px; padding: 0 14px; }
+.masthead .howto summary {
+  cursor: pointer; padding: 10px 0; font-family: var(--font-mono), monospace;
+  font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: #d7dce6;
+}
+.masthead .howto summary:hover { color: #fff; }
+.masthead .howto[open] summary { border-bottom: 1px solid rgba(255,255,255,.18); margin-bottom: 10px; }
+.masthead .howto ol { margin: 0; padding: 0 0 12px 18px; color: #d7dce6; font-size: 13.5px; line-height: 1.6; }
+.masthead .howto li { margin-bottom: 6px; }
+.masthead .howto li:last-child { margin-bottom: 12px; }
+.tour-start {
+  background: transparent; border: 1px solid var(--amber); color: var(--amber);
+  font-size: 12.5px; padding: 7px 14px; margin-bottom: 12px;
+}
+.tour-start:hover { background: var(--amber); color: #fff; }
+
+/* Field-by-field walkthrough. The spotlight is one element: its own box-shadow
+   both dims the rest of the page (the 9999px spread) and draws the amber ring
+   around the target, so there is no separate backdrop to keep in sync. It is
+   pointer-events:none so the highlighted field stays fully usable mid-tour. */
+.tour-spotlight {
+  position: fixed; z-index: 60; pointer-events: none; border-radius: 5px;
+  box-shadow: 0 0 0 9999px rgba(15, 20, 32, .62), 0 0 0 2px var(--amber), 0 0 16px rgba(184, 135, 58, .55);
+  transition: top .2s ease, left .2s ease, width .2s ease, height .2s ease;
+}
+.tour-tip {
+  position: fixed; z-index: 61; width: 300px; max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px); overflow-y: auto;
+  background: #fff; border: 1px solid var(--line); border-radius: 5px;
+  padding: 16px 18px; box-shadow: 0 12px 32px rgba(0, 0, 0, .28);
+  transition: top .2s ease, left .2s ease;
+}
+.tour-count {
+  margin: 0 0 6px; font-family: var(--font-mono), monospace; font-size: 10.5px;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--amber-ink);
+}
+.tour-tip h3 { margin: 0 0 8px; font-family: var(--font-serif), serif; font-weight: 600; font-size: 16px; color: var(--navy); }
+.tour-tip .tour-body { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--ink-2); }
+.tour-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; gap: 10px; }
+.tour-skip { background: transparent; border-color: transparent; color: var(--ink-3); font-size: 12.5px; padding: 8px 4px; }
+.tour-skip:hover { color: var(--ink-2); text-decoration: underline; }
+.tour-nav { display: flex; gap: 8px; }
+.tour-nav .btn-primary, .tour-nav .btn-ghost { width: auto; padding: 8px 16px; font-size: 13px; }
+
 main { padding: 34px 0 80px; }
 .grid { display: grid; grid-template-columns: 1fr; gap: 22px; }
 @media (min-width: 880px) { .grid { grid-template-columns: 380px 1fr; align-items: start; } }
