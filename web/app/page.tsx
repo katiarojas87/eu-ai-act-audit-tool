@@ -7,6 +7,9 @@ import { useState } from "react";
 type SourceQuote = { ref: string; quote: string; location: string; url: string; kind?: string };
 type Conclusion = { result: string; detail: string; articles: string[]; trigger: string; status: string; sources: SourceQuote[]; unsourced: string[] };
 type Obligation = { obligation: string; deadline: string; status: string; reasoning: string; gap_question: string; role?: string; article?: string };
+type ChatMsg = { role: "user" | "assistant"; content: string };
+type ChatState = { messages: ChatMsg[]; input: string; loading: boolean; error: string };
+const EMPTY_CHAT: ChatState = { messages: [], input: "", loading: false, error: "" };
 type Assessment = {
   system_name: string; tier: string; is_gpai: boolean;
   is_ai_system: Conclusion; prohibited_practice: Conclusion; high_risk: Conclusion;
@@ -119,6 +122,7 @@ export default function Page() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [systems, setSystems] = useState<Assessment[]>([]);
+  const [chats, setChats] = useState<ChatState[]>([]);
   const [reporting, setReporting] = useState(false);
 
   function loadDemo(d: (typeof DEMOS)[number]) {
@@ -142,11 +146,34 @@ export default function Page() {
       if (!res.ok) setError(data.detail || data.error || "Something went wrong.");
       else {
         setSystems((s) => [...s, data]);
+        setChats((c) => [...c, { ...EMPTY_CHAT, messages: [] }]);
         setName(""); setDesc(""); setComponents("");
         setRole("unknown"); setScope(EMPTY_SCOPE);
       }
     } catch { setError("Network error — please try again."); }
     finally { setLoading(false); }
+  }
+
+  async function sendChat(i: number) {
+    const question = (chats[i]?.input ?? "").trim();
+    if (!question) return;
+    const messages: ChatMsg[] = [...(chats[i]?.messages ?? []), { role: "user", content: question }];
+    setChats((cs) => cs.map((c, j) => (j === i ? { ...c, messages, input: "", loading: true, error: "" } : c)));
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-app-password": password },
+        body: JSON.stringify({ assessment: systems[i], messages }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setChats((cs) => cs.map((c, j) => (j === i ? { ...c, loading: false, error: data.detail || data.error || "Something went wrong." } : c)));
+      } else {
+        setChats((cs) => cs.map((c, j) => (j === i ? { ...c, loading: false, messages: [...c.messages, { role: "assistant", content: data.reply }] } : c)));
+      }
+    } catch {
+      setChats((cs) => cs.map((c, j) => (j === i ? { ...c, loading: false, error: "Network error — please try again." } : c)));
+    }
   }
 
   async function generateReport() {
@@ -307,7 +334,10 @@ export default function Page() {
                         {a.is_gpai && <span className="chip" style={{ color: "var(--gpai)" }}>+ GPAI</span>}
                         <span className="chip" style={{ color: "var(--ink-3)" }}>{a.confidence} confidence</span>
                         {a.human_review_required && <span className="chip" style={{ color: "var(--amber-ink)" }}>human review</span>}
-                        <button className="btn-ghost remove" onClick={() => setSystems((s) => s.filter((_, j) => j !== i))}>Remove</button>
+                        <button className="btn-ghost remove" onClick={() => {
+                          setSystems((s) => s.filter((_, j) => j !== i));
+                          setChats((c) => c.filter((_, j) => j !== i));
+                        }}>Remove</button>
                       </div>
                     </div>
                   </div>
@@ -418,6 +448,47 @@ export default function Page() {
                         ))}
                       </>
                     )}
+
+                    <div className="mrow-title">Ask about this assessment</div>
+                    <div className="chat">
+                      <div className="chat-log">
+                        {(chats[i]?.messages.length ?? 0) === 0 && (
+                          <p className="chat-empty">
+                            Ask about this result — e.g. &ldquo;why Annex III and not Annex
+                            I?&rdquo; or &ldquo;what would change the transparency
+                            duty?&rdquo;. Answers are grounded in the citations above; they
+                            cannot change the tier or obligations shown here.
+                          </p>
+                        )}
+                        {chats[i]?.messages.map((m, k) => (
+                          <div className={`chat-msg ${m.role}`} key={k}>
+                            <b>{m.role === "user" ? "You" : "Assistant"}</b>
+                            <span>{m.content}</span>
+                          </div>
+                        ))}
+                        {chats[i]?.loading && <div className="chat-msg assistant"><b>Assistant</b><span className="chat-thinking">…</span></div>}
+                      </div>
+                      {chats[i]?.error && <div className="err">{chats[i].error}</div>}
+                      <div className="chat-input-row">
+                        <input
+                          type="text"
+                          value={chats[i]?.input ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setChats((cs) => cs.map((c, j) => (j === i ? { ...c, input: v } : c)));
+                          }}
+                          onKeyDown={(e) => { if (e.key === "Enter" && !chats[i]?.loading) sendChat(i); }}
+                          placeholder="Ask a question about this result…"
+                        />
+                        <button
+                          className="btn-ghost"
+                          onClick={() => sendChat(i)}
+                          disabled={chats[i]?.loading || !(chats[i]?.input ?? "").trim()}
+                        >
+                          {chats[i]?.loading ? "…" : "Ask"}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               );

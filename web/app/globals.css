@@ -178,6 +178,22 @@ table.matrix, table.obl { width: 100%; border-collapse: collapse; font-size: 12.
 .miss { font-size: 12.5px; color: var(--ink-2); margin: 3px 0 3px 14px; }
 .deadline { font-family: var(--font-mono), monospace; font-size: 11px; color: var(--ink-2); white-space: nowrap; }
 
+/* Chat is read-only over the assessment above it: no chip, no status column —
+   visually it should read as a conversation about the result, not another
+   verdict. */
+.chat { background: var(--paper-2); border: 1px solid var(--line); border-radius: 3px; padding: 12px 14px; }
+.chat-log { display: flex; flex-direction: column; gap: 10px; max-height: 340px; overflow-y: auto; }
+.chat-empty { margin: 0; font-size: 12.5px; color: var(--ink-3); line-height: 1.5; }
+.chat-msg { font-size: 13px; line-height: 1.5; }
+.chat-msg b { display: block; font-family: var(--font-mono), monospace; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 2px; }
+.chat-msg.user b { color: var(--navy); }
+.chat-msg.assistant b { color: var(--amber-ink); }
+.chat-msg span { color: var(--ink); white-space: pre-wrap; }
+.chat-thinking { color: var(--ink-3); }
+.chat-input-row { display: flex; gap: 8px; margin-top: 10px; }
+.chat-input-row input { flex: 1; background: #fff; }
+.chat-input-row button { flex: 0 0 auto; }
+
 .export { border-top: 1px solid var(--line); margin-top: 20px; padding-top: 18px; }
 .disclaimer { margin-top: 22px; font-size: 12px; color: var(--ink-3); border-top: 1px solid var(--line); padding-top: 14px; }
 

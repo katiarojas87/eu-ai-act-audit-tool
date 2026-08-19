@@ -23,8 +23,11 @@ RATE_LIMIT = int(os.environ.get("RATE_LIMIT_PER_HOUR", "30"))
 RATE_WINDOW = 3600
 
 # A hard ceiling on billable work per UTC day, so a bad day cannot become a
-# bad month. Classification is the only endpoint that spends money.
+# bad month. Classification and chat are the endpoints that spend money, each
+# capped separately since a chat turn (one short Opus call) costs far less
+# than a classification (two, including full fact extraction).
 DAILY_CAP = int(os.environ.get("DAILY_CLASSIFY_CAP", "200"))
+DAILY_CHAT_CAP = int(os.environ.get("DAILY_CHAT_CAP", "500"))
 
 # Failed password attempts before a client is locked out for a while. The gate
 # is a single shared secret, so it must not be brute-forceable.
@@ -35,6 +38,7 @@ _lock = threading.Lock()
 _hits: dict[str, deque[float]] = defaultdict(deque)
 _failures: dict[str, deque[float]] = defaultdict(deque)
 _spend = {"day": date.today(), "count": 0}
+_chat_spend = {"day": date.today(), "count": 0}
 
 
 class LimitExceeded(Exception):
@@ -85,6 +89,26 @@ def refund_daily() -> None:
         _spend["count"] = max(0, _spend["count"] - 1)
 
 
+def check_daily_chat_cap() -> None:
+    """Global ceiling on chat turns per UTC day. Separate from check_daily_cap:
+    a chat reply is one short call, not a full classification, so it gets its
+    own, larger budget rather than competing with classify for the same one."""
+    with _lock:
+        today = date.today()
+        if _chat_spend["day"] != today:
+            _chat_spend["day"], _chat_spend["count"] = today, 0
+        if _chat_spend["count"] >= DAILY_CHAT_CAP:
+            raise LimitExceeded(
+                429, "The daily chat limit for this deployment has been "
+                     "reached. It resets at midnight UTC.")
+        _chat_spend["count"] += 1
+
+
+def refund_daily_chat() -> None:
+    with _lock:
+        _chat_spend["count"] = max(0, _chat_spend["count"] - 1)
+
+
 def check_not_locked_out(client: str) -> None:
     now = time.time()
     with _lock:
@@ -121,4 +145,5 @@ def client_id(forwarded_for: str | None, fallback: str) -> str:
 def usage() -> dict:
     with _lock:
         return {"day": _spend["day"].isoformat(), "classifications": _spend["count"],
-                "daily_cap": DAILY_CAP, "rate_limit_per_hour": RATE_LIMIT}
+                "daily_cap": DAILY_CAP, "rate_limit_per_hour": RATE_LIMIT,
+                "chat_messages": _chat_spend["count"], "chat_daily_cap": DAILY_CHAT_CAP}
